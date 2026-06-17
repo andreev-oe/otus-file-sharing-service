@@ -1,11 +1,208 @@
+import { InjectEntityManager } from '@nestjs/typeorm';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
+import { EntityManager } from 'typeorm';
+import { format as formatCsv } from 'fast-csv';
+import PDFDocument from 'pdfkit';
+import { StorageService } from '../infrastructure/storage/storage.service';
+import { File } from '../modules/files/entities/file.entity';
+import { Folder } from '../modules/folders/entities/folder.entity';
+import { GroupMember } from '../modules/groups/entities/group-member.entity';
+import { ReportFormat, ReportType } from '../common/enums';
 
 export const REPORTS_QUEUE = 'reports';
 
+const REPORT_S3_KEY_PREFIX = 'reports';
+
+export interface ReportJobData {
+  userId: string;
+  type: ReportType;
+  subjectId: string;
+  format: ReportFormat;
+  from?: string;
+  to?: string;
+}
+
+export interface ReportJobResult {
+  s3Key: string;
+}
+
 @Processor(REPORTS_QUEUE)
 export class ReportsProcessor extends WorkerHost {
-  async process(job: Job): Promise<void> {
-    throw new Error('Not implemented');
+  constructor(
+    @InjectEntityManager() private readonly entityManager: EntityManager,
+    private readonly storageService: StorageService,
+  ) {
+    super();
+  }
+
+  async process(job: Job<ReportJobData>): Promise<ReportJobResult> {
+    await job.updateProgress(10);
+
+    const rows = await this.fetchData(job.data);
+    await job.updateProgress(50);
+
+    const mimeType = job.data.format === ReportFormat.CSV ? 'text/csv' : 'application/pdf';
+    const buffer =
+      job.data.format === ReportFormat.CSV
+        ? await this.generateCsv(rows)
+        : await this.generatePdf(job.data, rows);
+    await job.updateProgress(80);
+
+    const s3Key = `${REPORT_S3_KEY_PREFIX}/${job.data.userId}/${job.id}.${job.data.format}`;
+    await this.storageService.upload(s3Key, buffer, mimeType);
+    await job.updateProgress(100);
+
+    return { s3Key };
+  }
+
+  private async fetchData(data: ReportJobData): Promise<Record<string, unknown>[]> {
+    if (data.type === ReportType.USER) {
+      return this.fetchUserReport(data);
+    }
+    if (data.type === ReportType.FOLDER) {
+      return this.fetchFolderReport(data);
+    }
+    return this.fetchGroupReport(data);
+  }
+
+  private async fetchUserReport(data: ReportJobData): Promise<Record<string, unknown>[]> {
+    const queryBuilder = this.entityManager
+      .createQueryBuilder(File, 'file')
+      .where('file.uploadedById = :subjectId', { subjectId: data.subjectId })
+      .andWhere('file.isDeleted = false');
+
+    if (data.from) {
+      queryBuilder.andWhere('file.createdAt >= :from', { from: data.from });
+    }
+    if (data.to) {
+      queryBuilder.andWhere('file.createdAt <= :to', { to: data.to });
+    }
+
+    const files = await queryBuilder.orderBy('file.createdAt', 'ASC').getMany();
+    return files.map((file) => ({
+      id: file.id,
+      name: file.name,
+      mimeType: file.mimeType,
+      size: file.size,
+      folderId: file.folderId ?? '',
+      version: file.version,
+      uploadedAt: file.createdAt,
+    }));
+  }
+
+  private async fetchFolderReport(data: ReportJobData): Promise<Record<string, unknown>[]> {
+    const folder = await this.entityManager
+      .createQueryBuilder(Folder, 'folder')
+      .where('folder.id = :id', { id: data.subjectId })
+      .andWhere('folder.isDeleted = false')
+      .getOne();
+
+    if (!folder) {
+      return [];
+    }
+
+    const descendants = await this.entityManager
+      .createQueryBuilder(Folder, 'folder')
+      .select('folder.id')
+      .where('folder.path LIKE :pathPrefix', { pathPrefix: `${folder.path}/%` })
+      .andWhere('folder.isDeleted = false')
+      .getMany();
+
+    const folderIds = [data.subjectId, ...descendants.map((descendant) => descendant.id)];
+
+    const queryBuilder = this.entityManager
+      .createQueryBuilder(File, 'file')
+      .where('file.folderId IN (:...folderIds)', { folderIds })
+      .andWhere('file.isDeleted = false');
+
+    if (data.from) {
+      queryBuilder.andWhere('file.createdAt >= :from', { from: data.from });
+    }
+    if (data.to) {
+      queryBuilder.andWhere('file.createdAt <= :to', { to: data.to });
+    }
+
+    const files = await queryBuilder.orderBy('file.createdAt', 'ASC').getMany();
+    return files.map((file) => ({
+      id: file.id,
+      name: file.name,
+      mimeType: file.mimeType,
+      size: file.size,
+      uploadedById: file.uploadedById,
+      version: file.version,
+      uploadedAt: file.createdAt,
+    }));
+  }
+
+  private async fetchGroupReport(data: ReportJobData): Promise<Record<string, unknown>[]> {
+    const members = await this.entityManager
+      .createQueryBuilder(GroupMember, 'member')
+      .leftJoinAndSelect('member.user', 'user')
+      .where('member.groupId = :groupId', { groupId: data.subjectId })
+      .orderBy('member.createdAt', 'ASC')
+      .getMany();
+
+    return members.map((member) => ({
+      userId: member.userId,
+      name: member.user?.name ?? '',
+      email: member.user?.email ?? '',
+      role: member.role,
+      joinedAt: member.createdAt,
+    }));
+  }
+
+  private generateCsv(rows: Record<string, unknown>[]): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      if (rows.length === 0) {
+        resolve(Buffer.alloc(0));
+        return;
+      }
+      const chunks: Buffer[] = [];
+      const csvStream = formatCsv({ headers: true });
+      csvStream.on('data', (chunk: Buffer | string) => {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      });
+      csvStream.on('end', () => { resolve(Buffer.concat(chunks)); });
+      csvStream.on('error', reject);
+      for (const row of rows) {
+        csvStream.write(row);
+      }
+      csvStream.end();
+    });
+  }
+
+  private generatePdf(jobData: ReportJobData, rows: Record<string, unknown>[]): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const document = new PDFDocument({ margin: 50 });
+      const chunks: Buffer[] = [];
+      document.on('data', (chunk: Buffer) => { chunks.push(chunk); });
+      document.on('end', () => { resolve(Buffer.concat(chunks)); });
+      document.on('error', reject);
+
+      document.fontSize(18).text(`${jobData.type} Report`, { align: 'center' });
+      document.moveDown();
+      document.fontSize(11).text(`Generated: ${new Date().toISOString()}`);
+      document.moveDown(1.5);
+
+      if (rows.length === 0) {
+        document.fontSize(11).text('No data available for the selected period.');
+      } else {
+        const headers = Object.keys(rows[0]);
+        for (const row of rows) {
+          for (const header of headers) {
+            document.fontSize(10).text(`${header}: ${String(row[header] ?? '')}`);
+          }
+          document.moveDown(0.5);
+          document
+            .moveTo(50, document.y)
+            .lineTo(545, document.y)
+            .stroke();
+          document.moveDown(0.5);
+        }
+      }
+
+      document.end();
+    });
   }
 }
