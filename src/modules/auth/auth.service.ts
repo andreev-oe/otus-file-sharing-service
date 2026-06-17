@@ -69,8 +69,8 @@ export class AuthService {
   }
 
   async logout(token: string): Promise<void> {
-    const payload = this.jwtService.decode(token);
-    if (payload && typeof payload === 'object' && 'jti' in payload && typeof payload.jti === 'string') {
+    const payload = this.jwtService.decode<RefreshTokenPayload>(token);
+    if (payload?.jti) {
       await this.redis.del(`${REDIS_REFRESH_TOKEN_KEY_PREFIX}${payload.jti}`);
     }
   }

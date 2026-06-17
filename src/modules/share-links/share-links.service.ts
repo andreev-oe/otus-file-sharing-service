@@ -7,14 +7,14 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { QueryFailedError, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { isPostgresFkViolation } from '../../common/constants/postgres-error-codes';
 import { ShareLink } from './entities/share-link.entity';
 import { CreateShareLinkDto } from './dto/create-share-link.dto';
 
 const BCRYPT_SALT_ROUNDS = 10;
 const MILLISECONDS_PER_SECOND = 1000;
-const POSTGRES_FK_VIOLATION_CODE = '23503';
 
 @Injectable()
 export class ShareLinksService {
@@ -43,10 +43,7 @@ export class ShareLinksService {
     try {
       return await this.shareLinkRepository.save(link);
     } catch (error) {
-      if (
-        error instanceof QueryFailedError &&
-        (error as QueryFailedError & { code: string }).code === POSTGRES_FK_VIOLATION_CODE
-      ) {
+      if (isPostgresFkViolation(error)) {
         throw new BadRequestException('File not found');
       }
       throw error;
