@@ -1,4 +1,12 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -9,22 +17,27 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  register(@Body() dto: RegisterDto) {
+  @HttpCode(HttpStatus.CREATED)
+  register(@Body() dto: RegisterDto): Promise<void> {
     return this.authService.register(dto);
   }
 
   @Post('login')
-  login(@Body() dto: LoginDto) {
+  @HttpCode(HttpStatus.OK)
+  login(@Body() dto: LoginDto): Promise<{ accessToken: string; refreshToken: string }> {
     return this.authService.login(dto);
   }
 
   @Post('refresh')
-  refresh(@Body() dto: RefreshTokenDto) {
+  @HttpCode(HttpStatus.OK)
+  refresh(@Body() dto: RefreshTokenDto): Promise<{ accessToken: string; refreshToken: string }> {
     return this.authService.refresh(dto.refreshToken);
   }
 
   @Post('logout')
-  logout(@Body() dto: RefreshTokenDto) {
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
+  logout(@Body() dto: RefreshTokenDto): Promise<void> {
     return this.authService.logout(dto.refreshToken);
   }
 }
