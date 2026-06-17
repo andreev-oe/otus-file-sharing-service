@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
+import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
 import redisConfig from './config/redis.config';
@@ -21,19 +22,19 @@ import { StorageModule } from './infrastructure/storage/storage.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [databaseConfig, jwtConfig, redisConfig, s3Config],
+      load: [appConfig, databaseConfig, jwtConfig, redisConfig, s3Config],
     }),
     TypeOrmModule.forRootAsync({
-      useFactory: (config: ConfigService) => {
+      useFactory: (config: ConfigService): TypeOrmModuleOptions => {
         return {
-          type: 'postgres' as const,
+          type: 'postgres',
           host: config.get<string>('database.host'),
           port: config.get<number>('database.port'),
           username: config.get<string>('database.username'),
           password: config.get<string>('database.password'),
           database: config.get<string>('database.database'),
           autoLoadEntities: true,
-          synchronize: process.env.NODE_ENV !== 'production',
+          synchronize: config.get<string>('app.nodeEnv') !== 'production',
         };
       },
       inject: [ConfigService],
