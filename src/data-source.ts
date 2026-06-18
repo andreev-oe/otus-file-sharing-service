@@ -6,7 +6,7 @@ import {
   DEFAULT_DB_PASSWORD,
   DEFAULT_DB_PORT,
   DEFAULT_DB_USERNAME,
-} from './config/database.config';
+} from './config/config.consts';
 
 dotenv.config();
 

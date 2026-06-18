@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { isPostgresFkViolation } from '../../common/constants/postgres-error-codes';
+import { EventBus } from '../../infrastructure/events/event-bus';
 import { Note } from './entities/note.entity';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
@@ -17,6 +18,7 @@ export class NotesService {
   constructor(
     @InjectRepository(Note)
     private readonly noteRepository: Repository<Note>,
+    private readonly eventBus: EventBus,
   ) {}
 
   async create(authorId: string, dto: CreateNoteDto): Promise<Note> {
@@ -27,7 +29,15 @@ export class NotesService {
       mentions: this.extractMentions(dto.content),
     });
     try {
-      return await this.noteRepository.save(note);
+      const saved = await this.noteRepository.save(note);
+      if (saved.mentions.length > 0) {
+        this.eventBus.usersMentioned.next({
+          mentionedUsernames: saved.mentions,
+          authorId,
+          noteId: saved.id,
+        });
+      }
+      return saved;
     } catch (error) {
       if (isPostgresFkViolation(error)) {
         throw new BadRequestException('File not found');
@@ -54,7 +64,15 @@ export class NotesService {
     const note = await this.findOwnedOrFail(id, authorId);
     note.content = dto.content;
     note.mentions = this.extractMentions(dto.content);
-    return this.noteRepository.save(note);
+    const saved = await this.noteRepository.save(note);
+    if (saved.mentions.length > 0) {
+      this.eventBus.usersMentioned.next({
+        mentionedUsernames: saved.mentions,
+        authorId,
+        noteId: saved.id,
+      });
+    }
+    return saved;
   }
 
   async remove(id: string, authorId: string): Promise<void> {

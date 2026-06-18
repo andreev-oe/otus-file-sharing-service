@@ -19,7 +19,7 @@
 ## NotesService
 
 ### `create(authorId, dto)`
-Создаёт заметку: сохраняет `fileId`, `authorId`, `content`, автоматически извлекает `mentions` из контента через `extractMentions()`. Если `fileId` не существует — TypeORM выбросит FK-ошибку (`23503`), которая перехватывается и конвертируется в `BadRequestException`.
+Создаёт заметку: сохраняет `fileId`, `authorId`, `content`, автоматически извлекает `mentions` из контента через `extractMentions()`. Если `fileId` не существует — TypeORM выбросит FK-ошибку (`23503`), которая перехватывается и конвертируется в `BadRequestException`. Если в контенте есть упоминания — эмитит событие `usersMentioned` через `EventBus`. `NotificationsModule` подписан на это событие и отправляет email упомянутым пользователям.
 
 ### `findByFile(fileId, page, limit)`
 Возвращает `{ data: Note[], total: number }`. Сортировка по `createdAt DESC`. Пагинация: `skip = (page - 1) * limit`, `take = limit`. Заметки файла видны всем аутентифицированным пользователям без ограничения по `authorId`.
@@ -33,7 +33,7 @@
 Конфигурация `simple` не применяет стемминг — корректно работает для любого языка. Поиск ускоряется GIN-индексом `notes_content_fts_idx` (миграция `1750244800000-AddNotesFtsIndex`).
 
 ### `update(id, authorId, dto)`
-Делегирует проверку авторства в `findOwnedOrFail()`. Обновляет `content` и пересчитывает `mentions`.
+Делегирует проверку авторства в `findOwnedOrFail()`. Обновляет `content` и пересчитывает `mentions`. Если в обновлённом контенте есть упоминания — эмитит `usersMentioned` (те же получатели, что при создании).
 
 ### `remove(id, authorId)`
 Делегирует проверку авторства в `findOwnedOrFail()`. Выполняет жёсткое удаление.
@@ -72,3 +72,5 @@ CREATE INDEX notes_content_fts_idx ON notes USING GIN (to_tsvector('simple', con
 Логины хранятся как PostgreSQL-массив `text[]`. Извлекаются из `content` при каждом `create` и `update`. `mentions` — денормализованный кэш: источником истины остаётся `content`.
 
 Пример: `"Отличный файл, @alice и @bob!"` → `mentions: ["alice", "bob"]`.
+
+Упоминания привязаны к полю `username` пользователя (уникальный никнейм, 3–32 символа, только латиница/цифры/`_`). `NotificationsModule` резолвит имена в email-адреса и отправляет письма. Автор не получает уведомление о своём собственном упоминании.

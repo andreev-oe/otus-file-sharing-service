@@ -1,5 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsString, Matches, MinLength } from 'class-validator';
+
+const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,32}$/;
 
 export class RegisterDto {
   @ApiProperty({ example: 'user@example.com' })
@@ -14,4 +16,9 @@ export class RegisterDto {
   @ApiProperty({ example: 'Иван Иванов' })
   @IsString()
   name: string;
+
+  @ApiProperty({ example: 'ivan_ivanov', description: 'Уникальный никнейм (3–32 символа, латиница, цифры, _)' })
+  @IsString()
+  @Matches(USERNAME_PATTERN, { message: 'username may only contain letters, numbers and underscores (3–32 chars)' })
+  username: string;
 }

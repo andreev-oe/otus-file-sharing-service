@@ -17,14 +17,14 @@ export class UsersService {
     private readonly storageService: StorageService,
   ) {}
 
-  async create(email: string, password: string, name: string): Promise<User> {
+  async create(email: string, password: string, name: string, username: string): Promise<User> {
     const existing = await this.userRepository.findOne({ where: { email } });
     if (existing) {
       throw new ConflictException('Email already in use');
     }
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-    const user = this.userRepository.create({ email, passwordHash, name });
+    const user = this.userRepository.create({ email, passwordHash, name, username });
     return this.userRepository.save(user);
   }
 
@@ -38,6 +38,10 @@ export class UsersService {
 
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { email } });
+  }
+
+  async findByUsername(username: string): Promise<User | null> {
+    return this.userRepository.findOne({ where: { username } });
   }
 
   async update(id: string, dto: UpdateUserDto): Promise<User> {

@@ -1,7 +1,5 @@
 import { registerAs } from '@nestjs/config';
-
-export const DEFAULT_REDIS_HOST = 'localhost';
-export const DEFAULT_REDIS_PORT = 6379;
+import { DEFAULT_REDIS_HOST, DEFAULT_REDIS_PORT } from './config.consts';
 
 export default registerAs('redis', () => {
   return {

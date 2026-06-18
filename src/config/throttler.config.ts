@@ -1,7 +1,5 @@
 import { registerAs } from '@nestjs/config';
-
-const DEFAULT_THROTTLE_TTL_MS = 60_000;
-const DEFAULT_THROTTLE_LIMIT = 100;
+import { DEFAULT_THROTTLE_LIMIT, DEFAULT_THROTTLE_TTL_MS } from './config.consts';
 
 export default registerAs('throttler', () => ({
   ttl: parseInt(process.env.THROTTLE_TTL_MS ?? String(DEFAULT_THROTTLE_TTL_MS), 10),

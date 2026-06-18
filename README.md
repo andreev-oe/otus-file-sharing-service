@@ -23,6 +23,7 @@ Swagger UI доступен по адресу `http://localhost:3000/api/docs`.
 | JWT | `JWT_SECRET`, `JWT_ACCESS_EXPIRES_IN_SECONDS`, `JWT_REFRESH_EXPIRES_IN_SECONDS` |
 | S3 / MinIO | `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET` |
 | Rate limiting | `THROTTLE_TTL_MS`, `THROTTLE_LIMIT` |
+| SMTP (email) | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` |
 
 ## AppModule — глобальная обвязка
 

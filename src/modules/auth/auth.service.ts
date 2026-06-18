@@ -31,7 +31,7 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto): Promise<void> {
-    await this.usersService.create(dto.email, dto.password, dto.name);
+    await this.usersService.create(dto.email, dto.password, dto.name, dto.username);
   }
 
   async login(dto: LoginDto): Promise<{ accessToken: string; refreshToken: string }> {

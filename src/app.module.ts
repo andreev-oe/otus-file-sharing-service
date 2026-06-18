@@ -25,6 +25,7 @@ import { GroupsModule } from './modules/groups/groups.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { ShareLinksModule } from './modules/share-links/share-links.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { StorageModule } from './infrastructure/storage/storage.module';
 
 function buildWinstonConsoleFormat(nodeEnv: string): winston.Logform.Format {
@@ -89,6 +90,7 @@ function buildWinstonConsoleFormat(nodeEnv: string): winston.Logform.Format {
     PermissionsModule,
     ShareLinksModule,
     ReportsModule,
+    NotificationsModule,
     StorageModule,
   ],
   providers: [

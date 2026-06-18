@@ -1,7 +1,5 @@
 import { registerAs } from '@nestjs/config';
-
-export const DEFAULT_S3_REGION = 'us-east-1';
-export const DEFAULT_S3_BUCKET = 'fileshare';
+import { DEFAULT_S3_BUCKET, DEFAULT_S3_REGION } from './config.consts';
 
 export default registerAs('s3', () => {
   return {

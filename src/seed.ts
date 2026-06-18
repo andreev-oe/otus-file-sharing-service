@@ -381,14 +381,14 @@ async function ensureBucket(client: S3Client, bucket: string): Promise<void> {
 
 async function upsertUser(
   repo: Repository<User>,
-  data: { id: string; email: string; password: string; name: string; role: UserRole; bio?: string },
+  data: { id: string; email: string; password: string; name: string; username: string; role: UserRole; bio?: string },
 ): Promise<User> {
   const existing = await repo.findOne({ where: { id: data.id } });
   if (existing) {
     return existing;
   }
   const passwordHash = await bcrypt.hash(data.password, BCRYPT_SALT_ROUNDS);
-  return repo.save(repo.create({ id: data.id, email: data.email, passwordHash, name: data.name, role: data.role, bio: data.bio ?? null }));
+  return repo.save(repo.create({ id: data.id, email: data.email, passwordHash, name: data.name, username: data.username, role: data.role, bio: data.bio ?? null }));
 }
 
 async function upsertFolder(
@@ -548,10 +548,10 @@ async function main(): Promise<void> {
 
     // ── Users ──────────────────────────────────────────────────────────────
     console.log('Seeding users...');
-    await upsertUser(userRepo, { id: ID.users.admin, email: 'admin@fileshare.pro',  password: 'Admin1234!', name: 'Administrator',   role: UserRole.ADMIN, bio: 'Platform administrator.' });
-    await upsertUser(userRepo, { id: ID.users.alice, email: 'alice@fileshare.pro',  password: 'Alice1234!', name: 'Alice Ivanova',   role: UserRole.USER,  bio: 'Backend engineer, loves clean code.' });
-    await upsertUser(userRepo, { id: ID.users.bob,   email: 'bob@fileshare.pro',    password: 'Bob1234!',   name: 'Bob Petrov',     role: UserRole.USER,  bio: 'Marketing lead, data-driven.' });
-    await upsertUser(userRepo, { id: ID.users.carol, email: 'carol@fileshare.pro',  password: 'Carol1234!', name: 'Carol Sidorova', role: UserRole.USER,  bio: 'Designer & brand manager.' });
+    await upsertUser(userRepo, { id: ID.users.admin, email: 'admin@fileshare.pro',  password: 'Admin1234!', name: 'Administrator',   username: 'admin', role: UserRole.ADMIN, bio: 'Platform administrator.' });
+    await upsertUser(userRepo, { id: ID.users.alice, email: 'alice@fileshare.pro',  password: 'Alice1234!', name: 'Alice Ivanova',   username: 'alice', role: UserRole.USER,  bio: 'Backend engineer, loves clean code.' });
+    await upsertUser(userRepo, { id: ID.users.bob,   email: 'bob@fileshare.pro',    password: 'Bob1234!',   name: 'Bob Petrov',     username: 'bob',   role: UserRole.USER,  bio: 'Marketing lead, data-driven.' });
+    await upsertUser(userRepo, { id: ID.users.carol, email: 'carol@fileshare.pro',  password: 'Carol1234!', name: 'Carol Sidorova', username: 'carol', role: UserRole.USER,  bio: 'Designer & brand manager.' });
 
     // ── Folders ────────────────────────────────────────────────────────────
     console.log('Seeding folders...');

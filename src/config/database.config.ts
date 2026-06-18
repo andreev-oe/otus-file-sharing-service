@@ -1,10 +1,11 @@
 import { registerAs } from '@nestjs/config';
-
-export const DEFAULT_DB_HOST = 'localhost';
-export const DEFAULT_DB_PORT = 5432;
-export const DEFAULT_DB_USERNAME = 'postgres';
-export const DEFAULT_DB_PASSWORD = 'postgres';
-export const DEFAULT_DB_NAME = 'fileshare';
+import {
+  DEFAULT_DB_HOST,
+  DEFAULT_DB_NAME,
+  DEFAULT_DB_PASSWORD,
+  DEFAULT_DB_PORT,
+  DEFAULT_DB_USERNAME,
+} from './config.consts';
 
 export default registerAs('database', () => {
   return {
