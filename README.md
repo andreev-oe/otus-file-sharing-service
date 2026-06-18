@@ -1,98 +1,91 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# File Sharing Service
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Сервис обмена файлами на NestJS + TypeScript + PostgreSQL + Redis + MinIO.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+## Запуск
 
 ```bash
-$ npm install
+cp .env.example .env
+docker compose up -d
 ```
 
-## Compile and run the project
+Swagger UI доступен по адресу `http://localhost:3000/api/docs`.
+
+## Переменные окружения
+
+Все переменные описаны в `.env.example`. Обязательные группы:
+
+| Группа | Переменные |
+|---|---|
+| Приложение | `PORT`, `NODE_ENV` |
+| PostgreSQL | `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME` |
+| Redis | `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` |
+| JWT | `JWT_SECRET`, `JWT_ACCESS_EXPIRES_IN_SECONDS`, `JWT_REFRESH_EXPIRES_IN_SECONDS` |
+| S3 / MinIO | `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET` |
+| Rate limiting | `THROTTLE_TTL_MS`, `THROTTLE_LIMIT` |
+
+## AppModule — глобальная обвязка
+
+### Конфигурация (`ConfigModule`)
+
+`ConfigModule.forRoot({ isGlobal: true })` — модуль доступен во всём приложении без повторного импорта. Конфиги вынесены в отдельные фабрики (`src/config/`): `appConfig`, `databaseConfig`, `jwtConfig`, `redisConfig`, `s3Config`, `throttlerConfig`. Каждая фабрика читает переменные окружения и предоставляет типизированный объект через `ConfigType<typeof ...>`.
+
+### База данных (`TypeOrmModule`)
+
+`synchronize: false` — автоматическая синхронизация схемы отключена во всех окружениях. Вместо неё используются миграции. `migrationsRun: true` — при каждом старте приложения TypeORM автоматически применяет все ещё не применённые миграции из `dist/migrations/`.
+
+### Rate limiting (`ThrottlerModule`)
+
+Глобальный `ThrottlerGuard` зарегистрирован через `APP_GUARD` — защищает все эндпоинты без дополнительных декораторов. Лимиты читаются из переменных окружения (`THROTTLE_TTL_MS`, `THROTTLE_LIMIT`).
+
+### Логирование (`WinstonModule`)
+
+`nest-winston` заменяет встроенный NestJS Logger. Формат зависит от `NODE_ENV`:
+- `production` — JSON с полем `timestamp` (удобно для log-агрегаторов)
+- остальные — цветной человекочитаемый вывод
+
+`app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER))` в `main.ts` перенаправляет все внутренние логи фреймворка в Winston.
+
+### Глобальные провайдеры
+
+| Токен | Класс | Назначение |
+|---|---|---|
+| `APP_FILTER` | `HttpExceptionFilter` | Перехватывает `HttpException`: `warn` для 4xx, `error` для 5xx — с методом, URL и статусом |
+| `APP_GUARD` | `ThrottlerGuard` | Rate limiting на все маршруты |
+| `APP_GUARD` | `PermissionsGuard` | Проверяет `@RequirePermission(...)` — если декоратора нет, пропускает запрос |
+| `APP_INTERCEPTOR` | `LoggingInterceptor` | Логирует каждый успешный HTTP-запрос: метод, URL, время ответа |
+
+### Безопасность (`main.ts`)
+
+- `helmet()` — выставляет защитные HTTP-заголовки (CSP, HSTS, X-Frame-Options и др.)
+- `ValidationPipe({ whitelist: true, transform: true })` — отбрасывает неизвестные поля из DTO, автоматически приводит типы
+- `ClassSerializerInterceptor` — применяет `@Exclude()` и `@Expose()` из `class-transformer` при сериализации ответов
+
+## Миграции
 
 ```bash
-# development
-$ npm run start
+# Сгенерировать миграцию по diff между entities и схемой БД
+npm run migration:generate -- src/migrations/ИмяМиграции
 
-# watch mode
-$ npm run start:dev
+# Применить вручную
+npm run migration:run
 
-# production mode
-$ npm run start:prod
+# Откатить последнюю
+npm run migration:revert
 ```
 
-## Run tests
+CLI-команды используют `src/data-source.ts` — отдельный `DataSource` для TypeORM CLI, независимый от NestJS DI-контейнера.
 
-```bash
-# unit tests
-$ npm run test
+## Модули
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+| Модуль | README |
+|---|---|
+| Auth | [src/modules/auth/README.md](src/modules/auth/README.md) |
+| Users | [src/modules/users/README.md](src/modules/users/README.md) |
+| Files | [src/modules/files/README.md](src/modules/files/README.md) |
+| Folders | [src/modules/folders/README.md](src/modules/folders/README.md) |
+| Notes | [src/modules/notes/README.md](src/modules/notes/README.md) |
+| Groups | [src/modules/groups/README.md](src/modules/groups/README.md) |
+| Permissions | [src/modules/permissions/README.md](src/modules/permissions/README.md) |
+| Share Links | [src/modules/share-links/README.md](src/modules/share-links/README.md) |
+| Reports | [src/modules/reports/README.md](src/modules/reports/README.md) |
