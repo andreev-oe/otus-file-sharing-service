@@ -73,18 +73,22 @@ export class FilesService {
 
     await this.storageService.upload(s3Key, uploadedFile.buffer, uploadedFile.mimetype);
 
-    const file = this.fileRepository.create({
-      id: fileId,
-      name: uploadedFile.originalname,
-      s3Key,
-      mimeType: uploadedFile.mimetype,
-      size: uploadedFile.size,
-      folderId: resolvedFolderId,
-      uploadedById,
-      version: nextVersion,
-    });
-
-    return this.fileRepository.save(file);
+    try {
+      const file = this.fileRepository.create({
+        id: fileId,
+        name: uploadedFile.originalname,
+        s3Key,
+        mimeType: uploadedFile.mimetype,
+        size: uploadedFile.size,
+        folderId: resolvedFolderId,
+        uploadedById,
+        version: nextVersion,
+      });
+      return await this.fileRepository.save(file);
+    } catch (error) {
+      await this.storageService.delete(s3Key);
+      throw error;
+    }
   }
 
   async findById(id: string, uploadedById: string): Promise<File> {

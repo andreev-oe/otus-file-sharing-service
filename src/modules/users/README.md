@@ -27,7 +27,7 @@
 Обновляет `name` и/или `bio`. Поля опциональны — передаются только те, что нужно изменить.
 
 ### `uploadAvatar(id, file)`
-Строит S3-ключ: `avatars/{id}/{timestamp}-{originalname}`. Загружает файл через `StorageService`. Получает постоянный публичный URL через `StorageService.getPublicUrl()` и сохраняет его в `avatarUrl`. Возвращает обновлённого пользователя.
+Строит S3-ключ: `avatars/{id}/{timestamp}-{originalname}`. Загружает файл через `StorageService`. Получает постоянный публичный URL через `StorageService.getPublicUrl()` и сохраняет его в `avatarUrl`. Возвращает обновлённого пользователя. Если `userRepository.update` падает — удаляет только что загруженный файл из S3 (rollback S3 при ошибке DB).
 
 ## Сущность User
 

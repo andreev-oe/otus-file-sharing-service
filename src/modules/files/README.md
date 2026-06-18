@@ -26,7 +26,7 @@
 3. Определяет номер версии через `resolveNextVersion()` — если файл с таким именем в той же папке уже существует, инкрементирует; иначе версия = 1
 4. Генерирует `fileId = crypto.randomUUID()`, строит ключ S3: `files/{uploadedById}/{fileId}/{originalname}`
 5. Загружает буфер в S3 через `StorageService`
-6. Сохраняет метаданные в PostgreSQL
+6. Сохраняет метаданные в PostgreSQL. Если сохранение падает — удаляет объект из S3 (`StorageService.delete`), после чего пробрасывает исходное исключение (rollback S3 при ошибке DB)
 
 ### `findByFolder(folderId, uploadedById)`
 Возвращает файлы пользователя в указанной папке. `folderId = null` — файлы в корне. Используется эндпоинтом `GET /files?folderId=:id`.

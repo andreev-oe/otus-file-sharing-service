@@ -48,8 +48,13 @@ export class UsersService {
   async uploadAvatar(id: string, file: Express.Multer.File): Promise<User> {
     const key = `${AVATAR_S3_KEY_PREFIX}${id}/${Date.now()}-${file.originalname}`;
     await this.storageService.upload(key, file.buffer, file.mimetype);
-    const avatarUrl = this.storageService.getPublicUrl(key);
-    await this.userRepository.update(id, { avatarUrl });
-    return this.findById(id);
+    try {
+      const avatarUrl = this.storageService.getPublicUrl(key);
+      await this.userRepository.update(id, { avatarUrl });
+      return this.findById(id);
+    } catch (error) {
+      await this.storageService.delete(key);
+      throw error;
+    }
   }
 }
