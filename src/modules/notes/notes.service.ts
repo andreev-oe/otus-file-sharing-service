@@ -9,6 +9,9 @@ import { UpdateNoteDto } from './dto/update-note.dto';
 const MENTION_PATTERN = /@(\w+)/g;
 const MENTION_CAPTURE_GROUP_INDEX = 1;
 
+const FTS_VECTOR = "to_tsvector('simple', note.content)";
+const FTS_QUERY = "plainto_tsquery('simple', :query)";
+
 @Injectable()
 export class NotesService {
   constructor(
@@ -57,6 +60,15 @@ export class NotesService {
   async remove(id: string, authorId: string): Promise<void> {
     await this.findOwnedOrFail(id, authorId);
     await this.noteRepository.delete(id);
+  }
+
+  async search(authorId: string, query: string): Promise<Note[]> {
+    return this.noteRepository
+      .createQueryBuilder('note')
+      .where('note.authorId = :authorId', { authorId })
+      .andWhere(`${FTS_VECTOR} @@ ${FTS_QUERY}`, { query })
+      .orderBy(`ts_rank(${FTS_VECTOR}, ${FTS_QUERY})`, 'DESC')
+      .getMany();
   }
 
   private async findOwnedOrFail(id: string, authorId: string): Promise<Note> {

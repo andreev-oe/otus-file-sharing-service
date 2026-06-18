@@ -36,6 +36,12 @@ export class NotesController {
     return this.notesService.create(user.id, dto);
   }
 
+  @Get('search')
+  @ApiOperation({ summary: 'Поиск заметок по содержимому (полнотекстовый)' })
+  search(@CurrentUser() user: User, @Query('q') query: string) {
+    return this.notesService.search(user.id, query);
+  }
+
   @Get('file/:fileId')
   @ApiOperation({ summary: 'Получить заметки к файлу с пагинацией' })
   findByFile(
