@@ -2,12 +2,14 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigType } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
 import redisConfig from './config/redis.config';
 import s3Config from './config/s3.config';
+import throttlerConfig from './config/throttler.config';
 import { CacheModule } from './infrastructure/cache/cache.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -24,7 +26,7 @@ import { StorageModule } from './infrastructure/storage/storage.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, jwtConfig, redisConfig, s3Config],
+      load: [appConfig, databaseConfig, jwtConfig, redisConfig, s3Config, throttlerConfig],
     }),
     TypeOrmModule.forRootAsync({
       useFactory: (
@@ -42,6 +44,13 @@ import { StorageModule } from './infrastructure/storage/storage.module';
       }),
       inject: [databaseConfig.KEY, appConfig.KEY],
     }),
+    ThrottlerModule.forRootAsync({
+      useFactory: (throttlerConfiguration: ConfigType<typeof throttlerConfig>) => ([{
+        ttl: throttlerConfiguration.ttl,
+        limit: throttlerConfiguration.limit,
+      }]),
+      inject: [throttlerConfig.KEY],
+    }),
     CacheModule,
     AuthModule,
     UsersModule,
@@ -55,6 +64,10 @@ import { StorageModule } from './infrastructure/storage/storage.module';
     StorageModule,
   ],
   providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: PermissionsGuard,
