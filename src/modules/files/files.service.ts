@@ -16,6 +16,7 @@ import { UpdateFileDto } from './dto/update-file.dto';
 const PRESIGNED_URL_TTL_SECONDS = 3600;
 const PRESIGNED_URL_CACHE_TTL_SECONDS = 3000;
 const PRESIGNED_URL_CACHE_KEY_PREFIX = 'file:download:';
+const FILE_S3_KEY_PREFIX = 'files/';
 
 const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
@@ -68,7 +69,7 @@ export class FilesService {
     );
 
     const fileId = crypto.randomUUID();
-    const s3Key = `files/${uploadedById}/${fileId}/${uploadedFile.originalname}`;
+    const s3Key = `${FILE_S3_KEY_PREFIX}${uploadedById}/${fileId}/${uploadedFile.originalname}`;
 
     await this.storageService.upload(s3Key, uploadedFile.buffer, uploadedFile.mimetype);
 

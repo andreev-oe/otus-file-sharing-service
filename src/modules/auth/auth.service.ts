@@ -10,6 +10,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 
 const REDIS_REFRESH_TOKEN_KEY_PREFIX = 'refresh:';
+const REFRESH_TOKEN_TYPE = 'refresh';
 
 interface RefreshTokenPayload {
   sub: string;
@@ -55,7 +56,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    if (payload.type !== 'refresh') {
+    if (payload.type !== REFRESH_TOKEN_TYPE) {
       throw new UnauthorizedException();
     }
 
@@ -87,7 +88,7 @@ export class AuthService {
     );
 
     const refreshToken = this.jwtService.sign(
-      { sub: userId, jti, type: 'refresh' },
+      { sub: userId, jti, type: REFRESH_TOKEN_TYPE },
       { secret, expiresIn: refreshExpiresInSeconds },
     );
 

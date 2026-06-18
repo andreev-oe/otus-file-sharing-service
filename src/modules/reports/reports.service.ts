@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { StorageService } from '../../infrastructure/storage/storage.service';
@@ -10,11 +10,13 @@ import {
 import { CreateReportDto } from './dto/create-report.dto';
 
 const REPORT_PRESIGNED_URL_TTL_SECONDS = 3600;
+const REPORT_JOB_NAME = 'generate';
+const JOB_STATUS_COMPLETED = 'completed';
 
 @Injectable()
 export class ReportsService {
   constructor(
-    @InjectQueue(REPORTS_QUEUE) private readonly reportsQueue: Queue,
+    @InjectQueue(REPORTS_QUEUE) private readonly reportsQueue: Queue<ReportJobData, ReportJobResult>,
     private readonly storageService: StorageService,
   ) {}
 
@@ -27,8 +29,11 @@ export class ReportsService {
       from: dto.from,
       to: dto.to,
     };
-    const job = await this.reportsQueue.add('generate', jobData);
-    return { jobId: job.id! };
+    const job = await this.reportsQueue.add(REPORT_JOB_NAME, jobData);
+    if (!job.id) {
+      throw new InternalServerErrorException('Queue failed to assign job ID');
+    }
+    return { jobId: job.id };
   }
 
   async getStatus(jobId: string): Promise<{ status: string; progress: number }> {
@@ -47,12 +52,11 @@ export class ReportsService {
       throw new NotFoundException('Job not found');
     }
     const status = await job.getState();
-    if (status !== 'completed') {
+    if (status !== JOB_STATUS_COMPLETED) {
       throw new BadRequestException('Report is not ready yet');
     }
-    const result = job.returnvalue as ReportJobResult;
     const url = await this.storageService.getPresignedUrl(
-      result.s3Key,
+      job.returnvalue.s3Key,
       REPORT_PRESIGNED_URL_TTL_SECONDS,
     );
     return { url };

@@ -7,6 +7,7 @@ import { User } from './entities/user.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 const BCRYPT_SALT_ROUNDS = 10;
+const AVATAR_S3_KEY_PREFIX = 'avatars/';
 
 @Injectable()
 export class UsersService {
@@ -45,7 +46,7 @@ export class UsersService {
   }
 
   async uploadAvatar(id: string, file: Express.Multer.File): Promise<User> {
-    const key = `avatars/${id}/${Date.now()}-${file.originalname}`;
+    const key = `${AVATAR_S3_KEY_PREFIX}${id}/${Date.now()}-${file.originalname}`;
     await this.storageService.upload(key, file.buffer, file.mimetype);
     const avatarUrl = this.storageService.getPublicUrl(key);
     await this.userRepository.update(id, { avatarUrl });

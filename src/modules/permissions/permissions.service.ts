@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
-import { GroupMember } from '../groups/entities/group-member.entity';
 import { Permission } from './entities/permission.entity';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { PermissionLevel, ResourceType, SubjectType } from '../../common/enums';
@@ -48,18 +47,11 @@ export class PermissionsService {
 
   async check(
     userId: string,
+    groupIds: string[],
     resourceType: ResourceType,
     resourceId: string,
     required: PermissionLevel,
   ): Promise<boolean> {
-    const groupMemberships = await this.permissionRepository.manager
-      .createQueryBuilder(GroupMember, 'groupMember')
-      .select('groupMember.groupId')
-      .where('groupMember.userId = :userId', { userId })
-      .getMany();
-
-    const groupIds = groupMemberships.map((membership) => { return membership.groupId; });
-
     const queryBuilder = this.permissionRepository
       .createQueryBuilder('permission')
       .where('permission.resourceType = :resourceType', { resourceType })

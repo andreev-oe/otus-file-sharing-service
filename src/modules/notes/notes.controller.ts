@@ -13,6 +13,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+
+const DEFAULT_PAGE = 1;
+const DEFAULT_PAGE_LIMIT = 20;
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { NotesService } from './notes.service';
@@ -32,8 +35,8 @@ export class NotesController {
   @Get('file/:fileId')
   findByFile(
     @Param('fileId', ParseUUIDPipe) fileId: string,
-    @Query('page') page = 1,
-    @Query('limit') limit = 20,
+    @Query('page') page = DEFAULT_PAGE,
+    @Query('limit') limit = DEFAULT_PAGE_LIMIT,
   ) {
     return this.notesService.findByFile(fileId, Number(page), Number(limit));
   }

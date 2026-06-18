@@ -93,15 +93,17 @@ export class ReportsProcessor extends WorkerHost {
     }
 
     const files = await queryBuilder.orderBy('file.createdAt', 'ASC').getMany();
-    return files.map((file) => ({
-      id: file.id,
-      name: file.name,
-      mimeType: file.mimeType,
-      size: file.size,
-      folderId: file.folderId ?? '',
-      version: file.version,
-      uploadedAt: file.createdAt,
-    }));
+    return files.map((file) => {
+      return {
+        id: file.id,
+        name: file.name,
+        mimeType: file.mimeType,
+        size: file.size,
+        folderId: file.folderId ?? '',
+        version: file.version,
+        uploadedAt: file.createdAt,
+      };
+    });
   }
 
   private async fetchFolderReport(data: ReportJobData): Promise<Record<string, unknown>[]> {
@@ -122,7 +124,7 @@ export class ReportsProcessor extends WorkerHost {
       .andWhere('folder.isDeleted = false')
       .getMany();
 
-    const folderIds = [data.subjectId, ...descendants.map((descendant) => descendant.id)];
+    const folderIds = [data.subjectId, ...descendants.map((descendant) => { return descendant.id; })];
 
     const queryBuilder = this.entityManager
       .createQueryBuilder(File, 'file')
@@ -137,15 +139,17 @@ export class ReportsProcessor extends WorkerHost {
     }
 
     const files = await queryBuilder.orderBy('file.createdAt', 'ASC').getMany();
-    return files.map((file) => ({
-      id: file.id,
-      name: file.name,
-      mimeType: file.mimeType,
-      size: file.size,
-      uploadedById: file.uploadedById,
-      version: file.version,
-      uploadedAt: file.createdAt,
-    }));
+    return files.map((file) => {
+      return {
+        id: file.id,
+        name: file.name,
+        mimeType: file.mimeType,
+        size: file.size,
+        uploadedById: file.uploadedById,
+        version: file.version,
+        uploadedAt: file.createdAt,
+      };
+    });
   }
 
   private async fetchGroupReport(data: ReportJobData): Promise<Record<string, unknown>[]> {
@@ -156,13 +160,15 @@ export class ReportsProcessor extends WorkerHost {
       .orderBy('member.createdAt', 'ASC')
       .getMany();
 
-    return members.map((member) => ({
-      userId: member.userId,
-      name: member.user?.name ?? '',
-      email: member.user?.email ?? '',
-      role: member.role,
-      joinedAt: member.createdAt,
-    }));
+    return members.map((member) => {
+      return {
+        userId: member.userId,
+        name: member.user?.name ?? '',
+        email: member.user?.email ?? '',
+        role: member.role,
+        joinedAt: member.createdAt,
+      };
+    });
   }
 
   private generateCsv(rows: Record<string, unknown>[]): Promise<Buffer> {

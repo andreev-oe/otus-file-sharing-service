@@ -7,6 +7,7 @@ import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 
 const MENTION_PATTERN = /@(\w+)/g;
+const MENTION_CAPTURE_GROUP_INDEX = 1;
 
 @Injectable()
 export class NotesService {
@@ -71,7 +72,7 @@ export class NotesService {
 
   private extractMentions(content: string): string[] {
     const matches = [...content.matchAll(MENTION_PATTERN)];
-    const usernames = matches.map((match) => match[1]);
+    const usernames = matches.map((match) => { return match[MENTION_CAPTURE_GROUP_INDEX]; });
     return [...new Set(usernames)];
   }
 }
