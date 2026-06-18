@@ -22,6 +22,7 @@ import { FolderTreeNodeDto } from './dto/folder-tree-node.dto';
 const MAX_FOLDER_DEPTH = 10;
 const FOLDER_TREE_CACHE_TTL_SECONDS = 600;
 const FOLDER_TREE_CACHE_KEY_PREFIX = 'folder:tree:';
+const TOTAL_SIZE_COLUMN = 'total_size';
 
 @Injectable()
 export class FoldersService implements OnModuleInit, OnModuleDestroy {
@@ -86,7 +87,8 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
     const cacheKey = `${FOLDER_TREE_CACHE_KEY_PREFIX}${ownerId}`;
     const cached = await this.redis.get(cacheKey);
     if (cached !== null) {
-      return JSON.parse(cached) as FolderTreeNodeDto[];
+      const tree: FolderTreeNodeDto[] = JSON.parse(cached);
+      return tree;
     }
 
     const allFolders = await this.folderRepository.find({
@@ -143,7 +145,11 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
       await this.folderRepository
         .createQueryBuilder()
         .update(Folder)
-        .set({ totalSize: () => `"total_size" - :sizeToSubtract` })
+        .set({
+          totalSize: () => {
+            return `"${TOTAL_SIZE_COLUMN}" - :sizeToSubtract`;
+          },
+        })
         .setParameter('sizeToSubtract', sizeToSubtract)
         .where(':folderPath LIKE CONCAT(path, :suffix)', {
           folderPath: folder.path,
@@ -178,7 +184,11 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
     await this.folderRepository
       .createQueryBuilder()
       .update(Folder)
-      .set({ totalSize: () => `"total_size" + :sizeDelta` })
+      .set({
+        totalSize: () => {
+          return `"${TOTAL_SIZE_COLUMN}" + :sizeDelta`;
+        },
+      })
       .setParameter('sizeDelta', event.sizeDelta)
       .where('id = :folderId', { folderId: event.folderId })
       .orWhere(':folderPath LIKE CONCAT(path, :suffix)', {
@@ -210,7 +220,9 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
 
     this.eventBus.cascadePermissionsToFolders.next({
       action: event.action,
-      folderIds: descendants.map((folder) => { return folder.id; }),
+      folderIds: descendants.map((folder) => {
+        return folder.id;
+      }),
       subjectType: event.subjectType,
       subjectId: event.subjectId,
       permissionLevel: event.permissionLevel,
@@ -273,7 +285,9 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
 
   private buildTree(allFolders: Folder[], parentId: string | null): FolderTreeNodeDto[] {
     return allFolders
-      .filter((folder) => { return folder.parentId === parentId; })
+      .filter((folder) => {
+        return folder.parentId === parentId;
+      })
       .map((folder) => {
         return FolderTreeNodeDto.fromEntity(folder, this.buildTree(allFolders, folder.id));
       });

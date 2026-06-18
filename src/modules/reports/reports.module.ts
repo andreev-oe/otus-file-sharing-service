@@ -12,13 +12,15 @@ import { ReportsService } from './reports.service';
     ConfigModule.forFeature(redisConfig),
     BullModule.registerQueueAsync({
       name: REPORTS_QUEUE,
-      useFactory: (redisConfiguration: ConfigType<typeof redisConfig>) => ({
-        connection: {
-          host: redisConfiguration.host,
-          port: redisConfiguration.port,
-          password: redisConfiguration.password,
-        },
-      }),
+      useFactory: (redisConfiguration: ConfigType<typeof redisConfig>) => {
+        return {
+          connection: {
+            host: redisConfiguration.host,
+            port: redisConfiguration.port,
+            password: redisConfiguration.password,
+          },
+        };
+      },
       inject: [redisConfig.KEY],
     }),
     StorageModule,

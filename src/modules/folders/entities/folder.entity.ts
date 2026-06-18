@@ -31,7 +31,7 @@ export class Folder {
   @Column({ default: false })
   isDeleted: boolean;
 
-  @Column({ type: 'bigint', default: 0 })
+  @Column({ name: 'total_size', type: 'bigint', default: 0 })
   totalSize: number;
 
   @CreateDateColumn()

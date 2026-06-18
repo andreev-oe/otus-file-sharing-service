@@ -9,7 +9,9 @@ export class UpdateFileDto {
 
   @ApiPropertyOptional({ example: 'uuid-of-folder', nullable: true })
   @IsOptional()
-  @ValidateIf((object: UpdateFileDto) => { return object.folderId !== null; })
+  @ValidateIf((object: UpdateFileDto) => {
+    return object.folderId !== null;
+  })
   @IsUUID()
   folderId?: string | null;
 }

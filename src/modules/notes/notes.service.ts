@@ -102,7 +102,9 @@ export class NotesService {
 
   private extractMentions(content: string): string[] {
     const matches = [...content.matchAll(MENTION_PATTERN)];
-    const usernames = matches.map((match) => { return match[MENTION_CAPTURE_GROUP_INDEX]; });
+    const usernames = matches.map((match) => {
+      return match[MENTION_CAPTURE_GROUP_INDEX];
+    });
     return [...new Set(usernames)];
   }
 }

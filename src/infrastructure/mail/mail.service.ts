@@ -18,7 +18,7 @@ export class MailService {
       port: smtpConfiguration.port,
       auth: {
         user: smtpConfiguration.user,
-        pass: smtpConfiguration.pass,
+        pass: smtpConfiguration.password,
       },
     });
   }

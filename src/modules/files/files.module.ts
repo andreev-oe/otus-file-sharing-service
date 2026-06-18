@@ -21,13 +21,15 @@ const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
     ConfigModule.forFeature(redisConfig),
     BullModule.registerQueueAsync({
       name: CLEANUP_QUEUE,
-      useFactory: (redisConfiguration: ConfigType<typeof redisConfig>) => ({
-        connection: {
-          host: redisConfiguration.host,
-          port: redisConfiguration.port,
-          password: redisConfiguration.password,
-        },
-      }),
+      useFactory: (redisConfiguration: ConfigType<typeof redisConfig>) => {
+        return {
+          connection: {
+            host: redisConfiguration.host,
+            port: redisConfiguration.port,
+            password: redisConfiguration.password,
+          },
+        };
+      },
       inject: [redisConfig.KEY],
     }),
   ],

@@ -16,8 +16,8 @@ export class LoggingInterceptor implements NestInterceptor {
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-    const req = context.switchToHttp().getRequest();
-    const { method, url } = req;
+    const request = context.switchToHttp().getRequest();
+    const { method, url } = request;
     const start = Date.now();
 
     return next.handle().pipe(

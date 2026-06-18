@@ -9,6 +9,8 @@ import type { LoggerService } from '@nestjs/common';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import type { Request, Response } from 'express';
 
+const HTTP_SERVER_ERROR_STATUS_MIN = 500;
+
 @Catch(HttpException)
 export class HttpExceptionFilter implements ExceptionFilter {
   constructor(
@@ -16,14 +18,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
   ) {}
 
   catch(exception: HttpException, host: ArgumentsHost) {
-    const ctx = host.switchToHttp();
-    const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
+    const httpContext = host.switchToHttp();
+    const response = httpContext.getResponse<Response>();
+    const request = httpContext.getRequest<Request>();
     const status = exception.getStatus();
     const body = exception.getResponse();
     const message = typeof body === 'string' ? body : exception.message;
 
-    if (status >= 500) {
+    if (status >= HTTP_SERVER_ERROR_STATUS_MIN) {
       this.logger.error(`${request.method} ${request.url} ${status} ${message}`);
     } else {
       this.logger.warn(`${request.method} ${request.url} ${status} ${message}`);

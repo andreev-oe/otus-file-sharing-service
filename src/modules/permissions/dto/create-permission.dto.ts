@@ -12,7 +12,9 @@ export class CreatePermissionDto {
     description: 'Не требуется для subjectType = everyone',
     required: false,
   })
-  @ValidateIf((dto: CreatePermissionDto) => { return dto.subjectType !== SubjectType.EVERYONE; })
+  @ValidateIf((dto: CreatePermissionDto) => {
+    return dto.subjectType !== SubjectType.EVERYONE;
+  })
   @IsUUID()
   subjectId?: string;
 

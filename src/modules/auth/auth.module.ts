@@ -13,10 +13,12 @@ import { UsersModule } from '../users/users.module';
     ConfigModule.forFeature(jwtConfig),
     PassportModule,
     JwtModule.registerAsync({
-      useFactory: (jwtConfiguration: ConfigType<typeof jwtConfig>) => ({
-        secret: jwtConfiguration.secret,
-        signOptions: { expiresIn: jwtConfiguration.accessExpiresInSeconds },
-      }),
+      useFactory: (jwtConfiguration: ConfigType<typeof jwtConfig>) => {
+        return {
+          secret: jwtConfiguration.secret,
+          signOptions: { expiresIn: jwtConfiguration.accessExpiresInSeconds },
+        };
+      },
       inject: [jwtConfig.KEY],
     }),
     UsersModule,

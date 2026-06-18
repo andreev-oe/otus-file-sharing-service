@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Subscription } from 'rxjs';
 import { EventBus } from '../../infrastructure/events/event-bus';
 import type { CascadePermissionsToFoldersEvent } from '../../infrastructure/events/cascade-permissions-to-folders.event';
+import { PermissionChangeAction } from '../../infrastructure/events/permission-changed-on-folder.event';
 import { Brackets, Repository } from 'typeorm';
 import { REDIS } from '../../infrastructure/cache/redis.provider';
 import { Permission } from './entities/permission.entity';
@@ -71,7 +72,7 @@ export class PermissionsService implements OnModuleInit, OnModuleDestroy {
 
     if (dto.resourceType === ResourceType.FOLDER) {
       this.eventBus.permissionChangedOnFolder.next({
-        action: 'grant',
+        action: PermissionChangeAction.GRANT,
         folderId: dto.resourceId,
         subjectType: dto.subjectType,
         subjectId,
@@ -92,7 +93,7 @@ export class PermissionsService implements OnModuleInit, OnModuleDestroy {
 
     if (permission.resourceType === ResourceType.FOLDER) {
       this.eventBus.permissionChangedOnFolder.next({
-        action: 'revoke',
+        action: PermissionChangeAction.REVOKE,
         folderId: permission.resourceId,
         subjectType: permission.subjectType,
         subjectId: permission.subjectId,
@@ -136,7 +137,9 @@ export class PermissionsService implements OnModuleInit, OnModuleDestroy {
       where: { userId },
       select: { groupId: true },
     });
-    const groupIds = memberships.map((membership) => membership.groupId);
+    const groupIds = memberships.map((membership) => {
+      return membership.groupId;
+    });
     const highestLevel = await this.resolveHighestLevel(userId, groupIds, resourceType, resourceId);
 
     await this.redis.set(
@@ -235,7 +238,7 @@ export class PermissionsService implements OnModuleInit, OnModuleDestroy {
 
   private async applyCascade(event: CascadePermissionsToFoldersEvent): Promise<void> {
     for (const folderId of event.folderIds) {
-      if (event.action === 'grant' && event.permissionLevel) {
+      if (event.action === PermissionChangeAction.GRANT && event.permissionLevel) {
         await this.upsertPermission(
           event.subjectType,
           event.subjectId,
@@ -243,7 +246,7 @@ export class PermissionsService implements OnModuleInit, OnModuleDestroy {
           folderId,
           event.permissionLevel,
         );
-      } else if (event.action === 'revoke') {
+      } else if (event.action === PermissionChangeAction.REVOKE) {
         await this.deletePermissionBySubject(
           event.subjectType,
           event.subjectId,

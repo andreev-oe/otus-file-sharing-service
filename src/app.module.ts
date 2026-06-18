@@ -48,35 +48,41 @@ function buildWinstonConsoleFormat(nodeEnv: string): winston.Logform.Format {
       useFactory: (
         databaseConfiguration: ConfigType<typeof databaseConfig>,
         appConfiguration: ConfigType<typeof appConfig>,
-      ): TypeOrmModuleOptions => ({
-        type: 'postgres',
-        host: databaseConfiguration.host,
-        port: databaseConfiguration.port,
-        username: databaseConfiguration.username,
-        password: databaseConfiguration.password,
-        database: databaseConfiguration.database,
-        autoLoadEntities: true,
-        synchronize: false,
-        migrations: [`${__dirname}/migrations/*{.ts,.js}`],
-        migrationsRun: true,
-      }),
+      ): TypeOrmModuleOptions => {
+        return {
+          type: 'postgres',
+          host: databaseConfiguration.host,
+          port: databaseConfiguration.port,
+          username: databaseConfiguration.username,
+          password: databaseConfiguration.password,
+          database: databaseConfiguration.database,
+          autoLoadEntities: true,
+          synchronize: false,
+          migrations: [`${__dirname}/migrations/*{.ts,.js}`],
+          migrationsRun: true,
+        };
+      },
       inject: [databaseConfig.KEY, appConfig.KEY],
     }),
     ThrottlerModule.forRootAsync({
-      useFactory: (throttlerConfiguration: ConfigType<typeof throttlerConfig>) => ([{
-        ttl: throttlerConfiguration.ttl,
-        limit: throttlerConfiguration.limit,
-      }]),
+      useFactory: (throttlerConfiguration: ConfigType<typeof throttlerConfig>) => {
+        return [{
+          ttl: throttlerConfiguration.ttl,
+          limit: throttlerConfiguration.limit,
+        }];
+      },
       inject: [throttlerConfig.KEY],
     }),
     WinstonModule.forRootAsync({
-      useFactory: (appConfiguration: ConfigType<typeof appConfig>) => ({
-        transports: [
-          new winston.transports.Console({
-            format: buildWinstonConsoleFormat(appConfiguration.nodeEnv),
-          }),
-        ],
-      }),
+      useFactory: (appConfiguration: ConfigType<typeof appConfig>) => {
+        return {
+          transports: [
+            new winston.transports.Console({
+              format: buildWinstonConsoleFormat(appConfiguration.nodeEnv),
+            }),
+          ],
+        };
+      },
       inject: [appConfig.KEY],
     }),
     CacheModule,

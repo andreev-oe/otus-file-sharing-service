@@ -124,7 +124,9 @@ export class ReportsProcessor extends WorkerHost {
       .andWhere('folder.isDeleted = false')
       .getMany();
 
-    const folderIds = [data.subjectId, ...descendants.map((descendant) => { return descendant.id; })];
+    const folderIds = [data.subjectId, ...descendants.map((descendant) => {
+      return descendant.id;
+    })];
 
     const queryBuilder = this.entityManager
       .createQueryBuilder(File, 'file')

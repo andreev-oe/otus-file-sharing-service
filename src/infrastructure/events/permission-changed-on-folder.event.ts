@@ -1,6 +1,9 @@
 import { PermissionLevel, SubjectType } from '../../common/enums';
 
-export type PermissionChangeAction = 'grant' | 'revoke';
+export enum PermissionChangeAction {
+  GRANT = 'grant',
+  REVOKE = 'revoke',
+}
 
 export interface PermissionChangedOnFolderEvent {
   action: PermissionChangeAction;
