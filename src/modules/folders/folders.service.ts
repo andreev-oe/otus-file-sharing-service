@@ -1,22 +1,28 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type Redis from 'ioredis';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { REDIS } from '../../infrastructure/cache/redis.provider';
 import { Folder } from './entities/folder.entity';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { UpdateFolderDto } from './dto/update-folder.dto';
 import { FolderTreeNodeDto } from './dto/folder-tree-node.dto';
 
 const MAX_FOLDER_DEPTH = 10;
+const FOLDER_TREE_CACHE_TTL_SECONDS = 600;
+const FOLDER_TREE_CACHE_KEY_PREFIX = 'folder:tree:';
 
 @Injectable()
 export class FoldersService {
   constructor(
     @InjectRepository(Folder)
     private readonly folderRepository: Repository<Folder>,
+    @Inject(REDIS) private readonly redis: Redis,
   ) {}
 
   async create(ownerId: string, dto: CreateFolderDto): Promise<Folder> {
@@ -42,16 +48,26 @@ export class FoldersService {
       path,
     });
 
-    return this.folderRepository.save(folder);
+    const saved = await this.folderRepository.save(folder);
+    await this.invalidateTreeCache(ownerId);
+    return saved;
   }
 
   async getTree(ownerId: string): Promise<FolderTreeNodeDto[]> {
+    const cacheKey = `${FOLDER_TREE_CACHE_KEY_PREFIX}${ownerId}`;
+    const cached = await this.redis.get(cacheKey);
+    if (cached !== null) {
+      return JSON.parse(cached) as FolderTreeNodeDto[];
+    }
+
     const allFolders = await this.folderRepository.find({
       where: { ownerId, isDeleted: false },
       order: { name: 'ASC' },
     });
 
-    return this.buildTree(allFolders, null);
+    const tree = this.buildTree(allFolders, null);
+    await this.redis.set(cacheKey, JSON.stringify(tree), 'EX', FOLDER_TREE_CACHE_TTL_SECONDS);
+    return tree;
   }
 
   async getChildFolders(folderId: string, ownerId: string): Promise<Folder[]> {
@@ -75,6 +91,7 @@ export class FoldersService {
       await this.folderRepository.update(id, { name: dto.name });
     }
 
+    await this.invalidateTreeCache(ownerId);
     return this.findOwnedOrFail(id, ownerId);
   }
 
@@ -91,6 +108,8 @@ export class FoldersService {
         pathPrefix: `${folder.path}/%`,
       })
       .execute();
+
+    await this.invalidateTreeCache(ownerId);
   }
 
   async search(ownerId: string, query: string): Promise<Folder[]> {
@@ -151,6 +170,10 @@ export class FoldersService {
       const updatedPath = `${newPath}${descendant.path.substring(oldPath.length)}`;
       await this.folderRepository.update(descendant.id, { path: updatedPath });
     }
+  }
+
+  private async invalidateTreeCache(ownerId: string): Promise<void> {
+    await this.redis.del(`${FOLDER_TREE_CACHE_KEY_PREFIX}${ownerId}`);
   }
 
   private buildTree(allFolders: Folder[], parentId: string | null): FolderTreeNodeDto[] {

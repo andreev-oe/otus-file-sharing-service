@@ -14,16 +14,16 @@
 ## PermissionsService
 
 ### `grant(dto)`
-Upsert: если разрешение для той же пары `(subjectType, subjectId, resourceType, resourceId)` уже существует — обновляет уровень. Иначе создаёт новую запись. Это позволяет повышать и понижать права без предварительного отзыва.
+Upsert: если разрешение для той же пары `(subjectType, subjectId, resourceType, resourceId)` уже существует — обновляет уровень. Иначе создаёт новую запись. Это позволяет повышать и понижать права без предварительного отзыва. После сохранения инвалидирует все кэшированные записи для изменённого ресурса (паттерн `perm:{resourceType}:{resourceId}:*`).
 
 ### `revoke(id)`
-Удаляет разрешение по `id`. `NotFoundException` если не найдено.
+Удаляет разрешение по `id`. `NotFoundException` если не найдено. После удаления инвалидирует кэш ресурса.
 
 ### `check(userId, groupIds, resourceType, resourceId, required)`
-Низкоуровневая проверка: принимает уже известные `groupIds`. Одним запросом забирает все подходящие записи из `permissions` (прямые — по `userId`, групповые — по `groupIds`), выбирает наивысший уровень и сравнивает с `required` по шкале `VIEW < COMMENT < EDIT < MANAGE`. Возвращает `true` если наивысший ≥ требуемого.
+Низкоуровневая проверка без кэша: принимает уже известные `groupIds`. Делегирует в `resolveHighestLevel()`, сравнивает наивысший уровень с `required` по шкале `VIEW < COMMENT < EDIT < MANAGE`. Возвращает `true` если наивысший ≥ требуемого.
 
 ### `checkForUser(userId, resourceType, resourceId, required)`
-Высокоуровневая обёртка для использования в guard-ах: сначала запрашивает все `groupId` пользователя из таблицы `group_members`, затем вызывает `check()`. Это единственное место, где `PermissionsModule` читает данные из чужой таблицы — через свой собственный `Repository<GroupMember>`, зарегистрированный локально в `PermissionsModule`.
+Высокоуровневая обёртка для guard-ов. Проверяет кэш Redis — если попадание, сразу сравнивает с `required`. При промахе запрашивает `groupId` пользователя из `group_members`, вызывает `resolveHighestLevel()`, кэширует наивысший уровень (или `none`) на 5 минут. Это единственное место, где `PermissionsModule` читает данные из чужой таблицы — через свой собственный `Repository<GroupMember>`, зарегистрированный локально.
 
 ## Сущность Permission
 
@@ -72,6 +72,14 @@ Upsert: если разрешение для той же пары `(subjectType,
 | Folders | `GET /folders/:id/children` | VIEW |
 | Folders | `PATCH /folders/:id` | EDIT |
 | Folders | `DELETE /folders/:id` | MANAGE |
+
+## Кэш в Redis
+
+| Ключ | Значение | TTL |
+|---|---|---|
+| `perm:{resourceType}:{resourceId}:{userId}` | Наивысший уровень доступа (`VIEW`/`COMMENT`/`EDIT`/`MANAGE`) или `none` | 300 сек (5 мин) |
+
+Одна запись покрывает проверку любого уровня для пары ресурс+пользователь. Инвалидируется по паттерну `perm:{resourceType}:{resourceId}:*` при `grant` и `revoke` — сбрасывает кэш всех пользователей для данного ресурса.
 
 ## Архитектурное решение
 
