@@ -19,19 +19,11 @@ Upsert: если разрешение для той же пары `(subjectType,
 ### `revoke(id)`
 Удаляет разрешение по `id`. `NotFoundException` если не найдено.
 
-### `check(userId, resourceType, resourceId, required)`
-Проверяет, имеет ли пользователь требуемый уровень доступа к ресурсу. Учитывает два источника прав:
+### `check(userId, groupIds, resourceType, resourceId, required)`
+Низкоуровневая проверка: принимает уже известные `groupIds`. Одним запросом забирает все подходящие записи из `permissions` (прямые — по `userId`, групповые — по `groupIds`), выбирает наивысший уровень и сравнивает с `required` по шкале `VIEW < COMMENT < EDIT < MANAGE`. Возвращает `true` если наивысший ≥ требуемого.
 
-1. **Прямые** — записи с `subjectType = user` и `subjectId = userId`
-2. **Групповые** — записи с `subjectType = group` и `subjectId` в группах пользователя
-
-Шаги:
-1. Получает список групп пользователя через `EntityManager.createQueryBuilder(GroupMember)`
-2. Одним запросом забирает все подходящие записи из `permissions`
-3. Выбирает наивысший уровень среди найденных
-4. Сравнивает с `required` по шкале `VIEW < COMMENT < EDIT < MANAGE`
-
-Возвращает `true` если наивысший найденный уровень ≥ требуемого.
+### `checkForUser(userId, resourceType, resourceId, required)`
+Высокоуровневая обёртка для использования в guard-ах: сначала запрашивает все `groupId` пользователя из таблицы `group_members`, затем вызывает `check()`. Это единственное место, где `PermissionsModule` читает данные из чужой таблицы — через свой собственный `Repository<GroupMember>`, зарегистрированный локально в `PermissionsModule`.
 
 ## Сущность Permission
 
@@ -56,6 +48,31 @@ Upsert: если разрешение для той же пары `(subjectType,
 
 Уровни упорядочены: `VIEW < COMMENT < EDIT < MANAGE`. Проверка `check` принимает любой уровень ≥ требуемого.
 
+## PermissionsGuard
+
+Глобальный guard, зарегистрированный через `APP_GUARD` в `AppModule`. Активируется только на эндпоинтах, помеченных декоратором `@RequirePermission(resourceType, level, paramName?)`. Если декоратора нет — пропускает запрос.
+
+Логика:
+1. Читает метаданные из `@RequirePermission`
+2. Берёт `request.user.id` (установлен `JwtAuthGuard`)
+3. Читает `request.params[paramName]` как `resourceId` (по умолчанию `paramName = 'id'`)
+4. Вызывает `checkForUser()` — при отказе бросает `ForbiddenException`
+
+Декоратор `@RequirePermission` живёт в `src/common/decorators/require-permission.decorator.ts`.
+
+### Покрытые эндпоинты
+
+| Модуль | Эндпоинт | Требуемый уровень |
+|---|---|---|
+| Files | `GET /files/:id` | VIEW |
+| Files | `GET /files/:id/download` | VIEW |
+| Files | `GET /files/:id/versions` | VIEW |
+| Files | `PATCH /files/:id` | EDIT |
+| Files | `DELETE /files/:id` | MANAGE |
+| Folders | `GET /folders/:id/children` | VIEW |
+| Folders | `PATCH /folders/:id` | EDIT |
+| Folders | `DELETE /folders/:id` | MANAGE |
+
 ## Архитектурное решение
 
-`check` читает таблицу `group_members` через `EntityManager.createQueryBuilder(GroupMember)` — без инжекции репозитория из `GroupsModule`. `EntityManager` имеет доступ ко всем зарегистрированным сущностям через `autoLoadEntities: true` в `AppModule`. Это позволяет выполнить join между доменами не нарушая изоляцию модулей.
+`PermissionsModule` регистрирует `TypeOrmModule.forFeature([Permission, GroupMember])` — это единственный способ дать `checkForUser()` доступ к `group_members` без импорта `GroupsModule`. Guard зарегистрирован глобально, поэтому не требует импорта `PermissionsModule` в каждый бизнес-модуль.
