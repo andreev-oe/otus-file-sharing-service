@@ -31,53 +31,53 @@ const ID = {
   users: {
     admin: '00000000-0000-0000-0000-000000000001',
     alice: '00000000-0000-0000-0000-000000000002',
-    bob:   '00000000-0000-0000-0000-000000000003',
+    bob: '00000000-0000-0000-0000-000000000003',
     carol: '00000000-0000-0000-0000-000000000004',
   },
   folders: {
-    aliceProjects:  '00000000-0000-0000-1000-000000000001',
-    aliceBackend:   '00000000-0000-0000-1000-000000000002',
-    aliceFrontend:  '00000000-0000-0000-1000-000000000003',
-    alicePersonal:  '00000000-0000-0000-1000-000000000004',
-    bobMarketing:   '00000000-0000-0000-1000-000000000005',
-    bobCampaigns:   '00000000-0000-0000-1000-000000000006',
-    bobDesign:      '00000000-0000-0000-1000-000000000007',
+    aliceProjects: '00000000-0000-0000-1000-000000000001',
+    aliceBackend: '00000000-0000-0000-1000-000000000002',
+    aliceFrontend: '00000000-0000-0000-1000-000000000003',
+    alicePersonal: '00000000-0000-0000-1000-000000000004',
+    bobMarketing: '00000000-0000-0000-1000-000000000005',
+    bobCampaigns: '00000000-0000-0000-1000-000000000006',
+    bobDesign: '00000000-0000-0000-1000-000000000007',
   },
   files: {
-    apiOverview:     '00000000-0000-0000-2000-000000000001',
-    databaseSchema:  '00000000-0000-0000-2000-000000000002',
-    componentGuide:  '00000000-0000-0000-2000-000000000003',
-    diary:           '00000000-0000-0000-2000-000000000004',
-    q3Results:       '00000000-0000-0000-2000-000000000005',
-    summerCampaign:  '00000000-0000-0000-2000-000000000006',
+    apiOverview: '00000000-0000-0000-2000-000000000001',
+    databaseSchema: '00000000-0000-0000-2000-000000000002',
+    componentGuide: '00000000-0000-0000-2000-000000000003',
+    diary: '00000000-0000-0000-2000-000000000004',
+    q3Results: '00000000-0000-0000-2000-000000000005',
+    summerCampaign: '00000000-0000-0000-2000-000000000006',
     brandGuidelines: '00000000-0000-0000-2000-000000000007',
   },
   groups: {
     engineering: '00000000-0000-0000-3000-000000000001',
-    marketing:   '00000000-0000-0000-3000-000000000002',
+    marketing: '00000000-0000-0000-3000-000000000002',
   },
   groupMembers: {
     engAlice: '00000000-0000-0000-3100-000000000001',
-    engBob:   '00000000-0000-0000-3100-000000000002',
+    engBob: '00000000-0000-0000-3100-000000000002',
     engCarol: '00000000-0000-0000-3100-000000000003',
-    mktBob:   '00000000-0000-0000-3100-000000000004',
+    mktBob: '00000000-0000-0000-3100-000000000004',
     mktCarol: '00000000-0000-0000-3100-000000000005',
   },
   permissions: {
-    bobEditBackend:      '00000000-0000-0000-4000-000000000001',
-    engCommentProjects:  '00000000-0000-0000-4000-000000000002',
-    aliceViewMarketing:  '00000000-0000-0000-4000-000000000003',
-    carolViewPersonal:   '00000000-0000-0000-4000-000000000004',
+    bobEditBackend: '00000000-0000-0000-4000-000000000001',
+    engCommentProjects: '00000000-0000-0000-4000-000000000002',
+    aliceViewMarketing: '00000000-0000-0000-4000-000000000003',
+    carolViewPersonal: '00000000-0000-0000-4000-000000000004',
   },
   notes: {
-    aliceOnApi:   '00000000-0000-0000-5000-000000000001',
-    bobOnApi:     '00000000-0000-0000-5000-000000000002',
-    bobOnQ3:      '00000000-0000-0000-5000-000000000003',
-    carolOnQ3:    '00000000-0000-0000-5000-000000000004',
+    aliceOnApi: '00000000-0000-0000-5000-000000000001',
+    bobOnApi: '00000000-0000-0000-5000-000000000002',
+    bobOnQ3: '00000000-0000-0000-5000-000000000003',
+    carolOnQ3: '00000000-0000-0000-5000-000000000004',
     carolOnBrand: '00000000-0000-0000-5000-000000000005',
   },
   shareLinks: {
-    apiPublic:   '00000000-0000-0000-6000-000000000001',
+    apiPublic: '00000000-0000-0000-6000-000000000001',
     q3Protected: '00000000-0000-0000-6000-000000000002',
   },
 };
@@ -381,19 +381,43 @@ async function ensureBucket(client: S3Client, bucket: string): Promise<void> {
 
 async function upsertUser(
   repository: Repository<User>,
-  data: { id: string; email: string; password: string; name: string; username: string; role: UserRole; bio?: string },
+  data: {
+    id: string;
+    email: string;
+    password: string;
+    name: string;
+    username: string;
+    role: UserRole;
+    bio?: string;
+  },
 ): Promise<User> {
   const existing = await repository.findOne({ where: { id: data.id } });
   if (existing) {
     return existing;
   }
   const passwordHash = await bcrypt.hash(data.password, BCRYPT_SALT_ROUNDS);
-  return repository.save(repository.create({ id: data.id, email: data.email, passwordHash, name: data.name, username: data.username, role: data.role, bio: data.bio ?? null }));
+  return repository.save(
+    repository.create({
+      id: data.id,
+      email: data.email,
+      passwordHash,
+      name: data.name,
+      username: data.username,
+      role: data.role,
+      bio: data.bio ?? null,
+    }),
+  );
 }
 
 async function upsertFolder(
   repository: Repository<Folder>,
-  data: { id: string; name: string; parentId: string | null; ownerId: string; path: string },
+  data: {
+    id: string;
+    name: string;
+    parentId: string | null;
+    ownerId: string;
+    path: string;
+  },
 ): Promise<Folder> {
   const existing = await repository.findOne({ where: { id: data.id } });
   if (existing) {
@@ -406,7 +430,12 @@ async function upsertFile(
   repository: Repository<File>,
   s3Client: S3Client,
   bucket: string,
-  data: { id: string; name: string; folderId: string | null; uploadedById: string },
+  data: {
+    id: string;
+    name: string;
+    folderId: string | null;
+    uploadedById: string;
+  },
 ): Promise<File> {
   const existing = await repository.findOne({ where: { id: data.id } });
   if (existing) {
@@ -416,24 +445,28 @@ async function upsertFile(
   const content = FILE_CONTENTS[data.name] ?? `Lorem ipsum — ${data.name}\n`;
   const buffer = Buffer.from(content, 'utf-8');
 
-  await s3Client.send(new PutObjectCommand({
-    Bucket: bucket,
-    Key: s3Key,
-    Body: buffer,
-    ContentType: 'text/plain',
-  }));
+  await s3Client.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: s3Key,
+      Body: buffer,
+      ContentType: 'text/plain',
+    }),
+  );
 
-  return repository.save(repository.create({
-    id: data.id,
-    name: data.name,
-    s3Key,
-    mimeType: 'text/plain',
-    size: buffer.byteLength,
-    folderId: data.folderId,
-    uploadedById: data.uploadedById,
-    version: 1,
-    isDeleted: false,
-  }));
+  return repository.save(
+    repository.create({
+      id: data.id,
+      name: data.name,
+      s3Key,
+      mimeType: 'text/plain',
+      size: buffer.byteLength,
+      folderId: data.folderId,
+      uploadedById: data.uploadedById,
+      version: 1,
+      isDeleted: false,
+    }),
+  );
 }
 
 async function upsertGroup(
@@ -478,7 +511,13 @@ async function upsertPermission(
 
 async function upsertNote(
   repository: Repository<Note>,
-  data: { id: string; fileId: string; authorId: string; content: string; mentions: string[] },
+  data: {
+    id: string;
+    fileId: string;
+    authorId: string;
+    content: string;
+    mentions: string[];
+  },
 ): Promise<Note> {
   const existing = await repository.findOne({ where: { id: data.id } });
   if (existing) {
@@ -502,7 +541,9 @@ async function upsertShareLink(
   if (existing) {
     return existing;
   }
-  return repository.save(repository.create({ ...data, downloadCount: 0, isActive: true }));
+  return repository.save(
+    repository.create({ ...data, downloadCount: 0, isActive: true }),
+  );
 }
 
 async function main(): Promise<void> {
@@ -510,22 +551,31 @@ async function main(): Promise<void> {
 
   const dataSource = new DataSource({
     type: 'postgres',
-    host:     process.env.DB_HOST     ?? 'localhost',
-    port:     parseInt(process.env.DB_PORT ?? '5432', 10),
+    host: process.env.DB_HOST ?? 'localhost',
+    port: parseInt(process.env.DB_PORT ?? '5432', 10),
     username: process.env.DB_USERNAME ?? 'postgres',
     password: process.env.DB_PASSWORD ?? 'postgres',
-    database: process.env.DB_NAME     ?? 'fileshare',
-    entities: [User, Folder, File, Note, Group, GroupMember, Permission, ShareLink],
+    database: process.env.DB_NAME ?? 'fileshare',
+    entities: [
+      User,
+      Folder,
+      File,
+      Note,
+      Group,
+      GroupMember,
+      Permission,
+      ShareLink,
+    ],
     synchronize: false,
   });
 
   await dataSource.initialize();
 
   const s3Client = new S3Client({
-    region:   process.env.S3_REGION ?? 'us-east-1',
+    region: process.env.S3_REGION ?? 'us-east-1',
     endpoint: process.env.S3_ENDPOINT ?? 'http://localhost:9000',
     credentials: {
-      accessKeyId:     process.env.S3_ACCESS_KEY_ID     ?? 'minioadmin',
+      accessKeyId: process.env.S3_ACCESS_KEY_ID ?? 'minioadmin',
       secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? 'minioadmin',
     },
     forcePathStyle: true,
@@ -537,75 +587,227 @@ async function main(): Promise<void> {
     console.log('Ensuring S3 bucket exists...');
     await ensureBucket(s3Client, bucket);
 
-    const userRepository        = dataSource.getRepository(User);
-    const folderRepository      = dataSource.getRepository(Folder);
-    const fileRepository        = dataSource.getRepository(File);
-    const noteRepository        = dataSource.getRepository(Note);
-    const groupRepository       = dataSource.getRepository(Group);
+    const userRepository = dataSource.getRepository(User);
+    const folderRepository = dataSource.getRepository(Folder);
+    const fileRepository = dataSource.getRepository(File);
+    const noteRepository = dataSource.getRepository(Note);
+    const groupRepository = dataSource.getRepository(Group);
     const groupMemberRepository = dataSource.getRepository(GroupMember);
-    const permissionRepository  = dataSource.getRepository(Permission);
-    const shareLinkRepository   = dataSource.getRepository(ShareLink);
+    const permissionRepository = dataSource.getRepository(Permission);
+    const shareLinkRepository = dataSource.getRepository(ShareLink);
 
     console.log('Seeding users...');
-    await upsertUser(userRepository, { id: ID.users.admin, email: 'admin@fileshare.pro',  password: 'Admin1234!', name: 'Administrator',   username: 'admin', role: UserRole.ADMIN, bio: 'Platform administrator.' });
-    await upsertUser(userRepository, { id: ID.users.alice, email: 'alice@fileshare.pro',  password: 'Alice1234!', name: 'Alice Ivanova',   username: 'alice', role: UserRole.USER,  bio: 'Backend engineer, loves clean code.' });
-    await upsertUser(userRepository, { id: ID.users.bob,   email: 'bob@fileshare.pro',    password: 'Bob1234!',   name: 'Bob Petrov',     username: 'bob',   role: UserRole.USER,  bio: 'Marketing lead, data-driven.' });
-    await upsertUser(userRepository, { id: ID.users.carol, email: 'carol@fileshare.pro',  password: 'Carol1234!', name: 'Carol Sidorova', username: 'carol', role: UserRole.USER,  bio: 'Designer & brand manager.' });
+    await upsertUser(userRepository, {
+      id: ID.users.admin,
+      email: 'admin@fileshare.pro',
+      password: 'Admin1234!',
+      name: 'Administrator',
+      username: 'admin',
+      role: UserRole.ADMIN,
+      bio: 'Platform administrator.',
+    });
+    await upsertUser(userRepository, {
+      id: ID.users.alice,
+      email: 'alice@fileshare.pro',
+      password: 'Alice1234!',
+      name: 'Alice Ivanova',
+      username: 'alice',
+      role: UserRole.USER,
+      bio: 'Backend engineer, loves clean code.',
+    });
+    await upsertUser(userRepository, {
+      id: ID.users.bob,
+      email: 'bob@fileshare.pro',
+      password: 'Bob1234!',
+      name: 'Bob Petrov',
+      username: 'bob',
+      role: UserRole.USER,
+      bio: 'Marketing lead, data-driven.',
+    });
+    await upsertUser(userRepository, {
+      id: ID.users.carol,
+      email: 'carol@fileshare.pro',
+      password: 'Carol1234!',
+      name: 'Carol Sidorova',
+      username: 'carol',
+      role: UserRole.USER,
+      bio: 'Designer & brand manager.',
+    });
 
     console.log('Seeding folders...');
     const aliceProjectsPath = `/${ID.folders.aliceProjects}`;
-    const bobMarketingPath  = `/${ID.folders.bobMarketing}`;
+    const bobMarketingPath = `/${ID.folders.bobMarketing}`;
 
-    await upsertFolder(folderRepository, { id: ID.folders.aliceProjects, name: 'Projects',   parentId: null,                    ownerId: ID.users.alice, path: aliceProjectsPath });
-    await upsertFolder(folderRepository, { id: ID.folders.aliceBackend,  name: 'Backend',    parentId: ID.folders.aliceProjects, ownerId: ID.users.alice, path: `${aliceProjectsPath}/${ID.folders.aliceBackend}` });
-    await upsertFolder(folderRepository, { id: ID.folders.aliceFrontend, name: 'Frontend',   parentId: ID.folders.aliceProjects, ownerId: ID.users.alice, path: `${aliceProjectsPath}/${ID.folders.aliceFrontend}` });
-    await upsertFolder(folderRepository, { id: ID.folders.alicePersonal, name: 'Personal',   parentId: null,                    ownerId: ID.users.alice, path: `/${ID.folders.alicePersonal}` });
-    await upsertFolder(folderRepository, { id: ID.folders.bobMarketing,  name: 'Marketing',  parentId: null,                    ownerId: ID.users.bob,   path: bobMarketingPath });
-    await upsertFolder(folderRepository, { id: ID.folders.bobCampaigns,  name: 'Campaigns',  parentId: ID.folders.bobMarketing,  ownerId: ID.users.bob,   path: `${bobMarketingPath}/${ID.folders.bobCampaigns}` });
-    await upsertFolder(folderRepository, { id: ID.folders.bobDesign,     name: 'Design',     parentId: null,                    ownerId: ID.users.bob,   path: `/${ID.folders.bobDesign}` });
+    await upsertFolder(folderRepository, {
+      id: ID.folders.aliceProjects,
+      name: 'Projects',
+      parentId: null,
+      ownerId: ID.users.alice,
+      path: aliceProjectsPath,
+    });
+    await upsertFolder(folderRepository, {
+      id: ID.folders.aliceBackend,
+      name: 'Backend',
+      parentId: ID.folders.aliceProjects,
+      ownerId: ID.users.alice,
+      path: `${aliceProjectsPath}/${ID.folders.aliceBackend}`,
+    });
+    await upsertFolder(folderRepository, {
+      id: ID.folders.aliceFrontend,
+      name: 'Frontend',
+      parentId: ID.folders.aliceProjects,
+      ownerId: ID.users.alice,
+      path: `${aliceProjectsPath}/${ID.folders.aliceFrontend}`,
+    });
+    await upsertFolder(folderRepository, {
+      id: ID.folders.alicePersonal,
+      name: 'Personal',
+      parentId: null,
+      ownerId: ID.users.alice,
+      path: `/${ID.folders.alicePersonal}`,
+    });
+    await upsertFolder(folderRepository, {
+      id: ID.folders.bobMarketing,
+      name: 'Marketing',
+      parentId: null,
+      ownerId: ID.users.bob,
+      path: bobMarketingPath,
+    });
+    await upsertFolder(folderRepository, {
+      id: ID.folders.bobCampaigns,
+      name: 'Campaigns',
+      parentId: ID.folders.bobMarketing,
+      ownerId: ID.users.bob,
+      path: `${bobMarketingPath}/${ID.folders.bobCampaigns}`,
+    });
+    await upsertFolder(folderRepository, {
+      id: ID.folders.bobDesign,
+      name: 'Design',
+      parentId: null,
+      ownerId: ID.users.bob,
+      path: `/${ID.folders.bobDesign}`,
+    });
 
     console.log('Seeding files and uploading to S3...');
-    await upsertFile(fileRepository, s3Client, bucket, { id: ID.files.apiOverview,     name: 'api-overview.txt',      folderId: ID.folders.aliceBackend,  uploadedById: ID.users.alice });
-    await upsertFile(fileRepository, s3Client, bucket, { id: ID.files.databaseSchema,  name: 'database-schema.txt',   folderId: ID.folders.aliceBackend,  uploadedById: ID.users.alice });
-    await upsertFile(fileRepository, s3Client, bucket, { id: ID.files.componentGuide,  name: 'component-guide.txt',   folderId: ID.folders.aliceFrontend, uploadedById: ID.users.alice });
-    await upsertFile(fileRepository, s3Client, bucket, { id: ID.files.diary,           name: 'diary.txt',             folderId: ID.folders.alicePersonal, uploadedById: ID.users.alice });
-    await upsertFile(fileRepository, s3Client, bucket, { id: ID.files.q3Results,       name: 'q3-results.txt',        folderId: ID.folders.bobMarketing,  uploadedById: ID.users.bob });
-    await upsertFile(fileRepository, s3Client, bucket, { id: ID.files.summerCampaign,  name: 'summer-campaign.txt',   folderId: ID.folders.bobCampaigns,  uploadedById: ID.users.bob });
-    await upsertFile(fileRepository, s3Client, bucket, { id: ID.files.brandGuidelines, name: 'brand-guidelines.txt',  folderId: ID.folders.bobDesign,     uploadedById: ID.users.bob });
+    await upsertFile(fileRepository, s3Client, bucket, {
+      id: ID.files.apiOverview,
+      name: 'api-overview.txt',
+      folderId: ID.folders.aliceBackend,
+      uploadedById: ID.users.alice,
+    });
+    await upsertFile(fileRepository, s3Client, bucket, {
+      id: ID.files.databaseSchema,
+      name: 'database-schema.txt',
+      folderId: ID.folders.aliceBackend,
+      uploadedById: ID.users.alice,
+    });
+    await upsertFile(fileRepository, s3Client, bucket, {
+      id: ID.files.componentGuide,
+      name: 'component-guide.txt',
+      folderId: ID.folders.aliceFrontend,
+      uploadedById: ID.users.alice,
+    });
+    await upsertFile(fileRepository, s3Client, bucket, {
+      id: ID.files.diary,
+      name: 'diary.txt',
+      folderId: ID.folders.alicePersonal,
+      uploadedById: ID.users.alice,
+    });
+    await upsertFile(fileRepository, s3Client, bucket, {
+      id: ID.files.q3Results,
+      name: 'q3-results.txt',
+      folderId: ID.folders.bobMarketing,
+      uploadedById: ID.users.bob,
+    });
+    await upsertFile(fileRepository, s3Client, bucket, {
+      id: ID.files.summerCampaign,
+      name: 'summer-campaign.txt',
+      folderId: ID.folders.bobCampaigns,
+      uploadedById: ID.users.bob,
+    });
+    await upsertFile(fileRepository, s3Client, bucket, {
+      id: ID.files.brandGuidelines,
+      name: 'brand-guidelines.txt',
+      folderId: ID.folders.bobDesign,
+      uploadedById: ID.users.bob,
+    });
 
     console.log('Seeding groups...');
-    await upsertGroup(groupRepository, { id: ID.groups.engineering, name: 'Engineering',   description: 'Backend & frontend engineers.',  ownerId: ID.users.alice });
-    await upsertGroup(groupRepository, { id: ID.groups.marketing,   name: 'Marketing',     description: 'Marketing and brand team.',       ownerId: ID.users.bob });
+    await upsertGroup(groupRepository, {
+      id: ID.groups.engineering,
+      name: 'Engineering',
+      description: 'Backend & frontend engineers.',
+      ownerId: ID.users.alice,
+    });
+    await upsertGroup(groupRepository, {
+      id: ID.groups.marketing,
+      name: 'Marketing',
+      description: 'Marketing and brand team.',
+      ownerId: ID.users.bob,
+    });
 
-    await upsertGroupMember(groupMemberRepository, { id: ID.groupMembers.engAlice, groupId: ID.groups.engineering, userId: ID.users.alice, role: GroupMemberRole.OWNER });
-    await upsertGroupMember(groupMemberRepository, { id: ID.groupMembers.engBob,   groupId: ID.groups.engineering, userId: ID.users.bob,   role: GroupMemberRole.ADMIN });
-    await upsertGroupMember(groupMemberRepository, { id: ID.groupMembers.engCarol, groupId: ID.groups.engineering, userId: ID.users.carol, role: GroupMemberRole.MEMBER });
-    await upsertGroupMember(groupMemberRepository, { id: ID.groupMembers.mktBob,   groupId: ID.groups.marketing,   userId: ID.users.bob,   role: GroupMemberRole.OWNER });
-    await upsertGroupMember(groupMemberRepository, { id: ID.groupMembers.mktCarol, groupId: ID.groups.marketing,   userId: ID.users.carol, role: GroupMemberRole.ADMIN });
+    await upsertGroupMember(groupMemberRepository, {
+      id: ID.groupMembers.engAlice,
+      groupId: ID.groups.engineering,
+      userId: ID.users.alice,
+      role: GroupMemberRole.OWNER,
+    });
+    await upsertGroupMember(groupMemberRepository, {
+      id: ID.groupMembers.engBob,
+      groupId: ID.groups.engineering,
+      userId: ID.users.bob,
+      role: GroupMemberRole.ADMIN,
+    });
+    await upsertGroupMember(groupMemberRepository, {
+      id: ID.groupMembers.engCarol,
+      groupId: ID.groups.engineering,
+      userId: ID.users.carol,
+      role: GroupMemberRole.MEMBER,
+    });
+    await upsertGroupMember(groupMemberRepository, {
+      id: ID.groupMembers.mktBob,
+      groupId: ID.groups.marketing,
+      userId: ID.users.bob,
+      role: GroupMemberRole.OWNER,
+    });
+    await upsertGroupMember(groupMemberRepository, {
+      id: ID.groupMembers.mktCarol,
+      groupId: ID.groups.marketing,
+      userId: ID.users.carol,
+      role: GroupMemberRole.ADMIN,
+    });
 
     console.log('Seeding permissions...');
     await upsertPermission(permissionRepository, {
       id: ID.permissions.bobEditBackend,
-      subjectType: SubjectType.USER,   subjectId: ID.users.bob,
-      resourceType: ResourceType.FOLDER, resourceId: ID.folders.aliceBackend,
+      subjectType: SubjectType.USER,
+      subjectId: ID.users.bob,
+      resourceType: ResourceType.FOLDER,
+      resourceId: ID.folders.aliceBackend,
       permission: PermissionLevel.EDIT,
     });
     await upsertPermission(permissionRepository, {
       id: ID.permissions.engCommentProjects,
-      subjectType: SubjectType.GROUP,  subjectId: ID.groups.engineering,
-      resourceType: ResourceType.FOLDER, resourceId: ID.folders.aliceProjects,
+      subjectType: SubjectType.GROUP,
+      subjectId: ID.groups.engineering,
+      resourceType: ResourceType.FOLDER,
+      resourceId: ID.folders.aliceProjects,
       permission: PermissionLevel.COMMENT,
     });
     await upsertPermission(permissionRepository, {
       id: ID.permissions.aliceViewMarketing,
-      subjectType: SubjectType.USER,   subjectId: ID.users.alice,
-      resourceType: ResourceType.FOLDER, resourceId: ID.folders.bobMarketing,
+      subjectType: SubjectType.USER,
+      subjectId: ID.users.alice,
+      resourceType: ResourceType.FOLDER,
+      resourceId: ID.folders.bobMarketing,
       permission: PermissionLevel.VIEW,
     });
     await upsertPermission(permissionRepository, {
       id: ID.permissions.carolViewPersonal,
-      subjectType: SubjectType.USER,   subjectId: ID.users.carol,
-      resourceType: ResourceType.FOLDER, resourceId: ID.folders.alicePersonal,
+      subjectType: SubjectType.USER,
+      subjectId: ID.users.carol,
+      resourceType: ResourceType.FOLDER,
+      resourceId: ID.folders.alicePersonal,
       permission: PermissionLevel.VIEW,
     });
 
@@ -614,35 +816,40 @@ async function main(): Promise<void> {
       id: ID.notes.aliceOnApi,
       fileId: ID.files.apiOverview,
       authorId: ID.users.alice,
-      content: 'First draft of the API overview. @bob please review the auth section, and @carol check if the rate limiting policy makes sense.',
+      content:
+        'First draft of the API overview. @bob please review the auth section, and @carol check if the rate limiting policy makes sense.',
       mentions: ['bob', 'carol'],
     });
     await upsertNote(noteRepository, {
       id: ID.notes.bobOnApi,
       fileId: ID.files.apiOverview,
       authorId: ID.users.bob,
-      content: '@alice looks solid! I\'d suggest adding retry logic examples in the rate limiting section. @carol FYI — the 100 req/min limit applies per IP.',
+      content:
+        "@alice looks solid! I'd suggest adding retry logic examples in the rate limiting section. @carol FYI — the 100 req/min limit applies per IP.",
       mentions: ['alice', 'carol'],
     });
     await upsertNote(noteRepository, {
       id: ID.notes.bobOnQ3,
       fileId: ID.files.q3Results,
       authorId: ID.users.bob,
-      content: 'Q3 numbers are in. @alice @carol please review before we share with stakeholders. Especially check the revenue projection on page 3.',
+      content:
+        'Q3 numbers are in. @alice @carol please review before we share with stakeholders. Especially check the revenue projection on page 3.',
       mentions: ['alice', 'carol'],
     });
     await upsertNote(noteRepository, {
       id: ID.notes.carolOnQ3,
       fileId: ID.files.q3Results,
       authorId: ID.users.carol,
-      content: 'Numbers verified. Great quarter @bob! Revenue is up 23% YoY. Sharing the summary with the broader team.',
+      content:
+        'Numbers verified. Great quarter @bob! Revenue is up 23% YoY. Sharing the summary with the broader team.',
       mentions: ['bob'],
     });
     await upsertNote(noteRepository, {
       id: ID.notes.carolOnBrand,
       fileId: ID.files.brandGuidelines,
       authorId: ID.users.carol,
-      content: '@bob I\'ve updated the colour palette and typography sections to v2.1. Please approve so we can send assets to the print vendor.',
+      content:
+        "@bob I've updated the colour palette and typography sections to v2.1. Please approve so we can send assets to the print vendor.",
       mentions: ['bob'],
     });
 
@@ -675,8 +882,12 @@ async function main(): Promise<void> {
     console.log('  carol@fileshare.pro  / Carol1234!  (user)');
     console.log('');
     console.log('Share links:');
-    console.log(`  Public (api-overview.txt, 7d TTL): GET /share-links/${ID.shareLinks.apiPublic}`);
-    console.log(`  Protected (q3-results.txt, password: qwerty123): GET /share-links/${ID.shareLinks.q3Protected}?password=qwerty123`);
+    console.log(
+      `  Public (api-overview.txt, 7d TTL): GET /share-links/${ID.shareLinks.apiPublic}`,
+    );
+    console.log(
+      `  Protected (q3-results.txt, password: qwerty123): GET /share-links/${ID.shareLinks.q3Protected}?password=qwerty123`,
+    );
   } finally {
     await dataSource.destroy();
   }
