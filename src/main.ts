@@ -9,6 +9,12 @@ import appConfig from './config/app.config';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
+
+  const appConfiguration = app.get<ConfigType<typeof appConfig>>(appConfig.KEY);
+  app.enableCors({
+    origin: appConfiguration.frontendOrigin,
+    credentials: true,
+  });
   app.use(helmet());
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
@@ -23,7 +29,6 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, document);
 
-  const appConfiguration = app.get<ConfigType<typeof appConfig>>(appConfig.KEY);
   await app.listen(appConfiguration.port);
 }
 bootstrap();

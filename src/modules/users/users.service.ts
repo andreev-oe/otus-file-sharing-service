@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -17,14 +21,24 @@ export class UsersService {
     private readonly storageService: StorageService,
   ) {}
 
-  async create(email: string, password: string, name: string, username: string): Promise<User> {
+  async create(
+    email: string,
+    password: string,
+    name: string,
+    username: string,
+  ): Promise<User> {
     const existing = await this.userRepository.findOne({ where: { email } });
     if (existing) {
       throw new ConflictException('Email already in use');
     }
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-    const user = this.userRepository.create({ email, passwordHash, name, username });
+    const user = this.userRepository.create({
+      email,
+      passwordHash,
+      name,
+      username,
+    });
     return this.userRepository.save(user);
   }
 
@@ -50,15 +64,28 @@ export class UsersService {
   }
 
   async uploadAvatar(id: string, file: Express.Multer.File): Promise<User> {
-    const key = `${AVATAR_S3_KEY_PREFIX}${id}/${Date.now()}-${file.originalname}`;
-    await this.storageService.upload(key, file.buffer, file.mimetype);
+    const user = await this.findById(id);
+    const previousAvatarUrl = user.avatarUrl;
+
+    const newKey = `${AVATAR_S3_KEY_PREFIX}${id}/${Date.now()}-${file.originalname}`;
+    await this.storageService.upload(newKey, file.buffer, file.mimetype);
+
     try {
-      const avatarUrl = this.storageService.getPublicUrl(key);
+      const avatarUrl = this.storageService.getPublicUrl(newKey);
       await this.userRepository.update(id, { avatarUrl });
-      return this.findById(id);
     } catch (error) {
-      await this.storageService.delete(key);
+      await this.storageService.delete(newKey);
       throw error;
     }
+
+    if (previousAvatarUrl) {
+      const previousKey = previousAvatarUrl.replace(
+        `${this.storageService.getPublicUrl('')}`,
+        '',
+      );
+      await this.storageService.delete(previousKey).catch(() => {});
+    }
+
+    return this.findById(id);
   }
 }

@@ -1,5 +1,6 @@
 export const DEFAULT_APP_PORT = 3000;
 export const DEFAULT_NODE_ENV = 'development';
+export const DEFAULT_FRONTEND_ORIGIN = 'http://localhost:4173';
 
 export const DEFAULT_DB_HOST = 'localhost';
 export const DEFAULT_DB_PORT = 5432;
