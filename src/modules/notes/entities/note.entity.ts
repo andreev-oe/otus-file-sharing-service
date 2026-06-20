@@ -17,13 +17,17 @@ export class Note {
   @Column()
   fileId: string;
 
-  @ManyToOne(() => File)
+  @ManyToOne(() => {
+    return File;
+  })
   file: File;
 
   @Column()
   authorId: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => {
+    return User;
+  })
   author: User;
 
   @Column('text')

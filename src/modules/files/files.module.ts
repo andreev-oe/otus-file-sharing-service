@@ -38,9 +38,15 @@ const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
   exports: [FilesService],
 })
 export class FilesModule implements OnModuleInit {
-  constructor(@InjectQueue(CLEANUP_QUEUE) private readonly cleanupQueue: Queue) {}
+  constructor(
+    @InjectQueue(CLEANUP_QUEUE) private readonly cleanupQueue: Queue,
+  ) {}
 
   async onModuleInit(): Promise<void> {
-    await this.cleanupQueue.add('cleanup', {}, { repeat: { every: CLEANUP_INTERVAL_MS } });
+    await this.cleanupQueue.add(
+      'cleanup',
+      {},
+      { repeat: { every: CLEANUP_INTERVAL_MS } },
+    );
   }
 }

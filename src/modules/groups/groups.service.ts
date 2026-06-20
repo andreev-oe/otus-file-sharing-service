@@ -41,7 +41,11 @@ export class GroupsService {
     return savedGroup;
   }
 
-  async addMember(groupId: string, requesterId: string, dto: AddMemberDto): Promise<GroupMember> {
+  async addMember(
+    groupId: string,
+    requesterId: string,
+    dto: AddMemberDto,
+  ): Promise<GroupMember> {
     await this.verifyManagerAccess(groupId, requesterId);
 
     const existing = await this.groupMemberRepository.findOne({
@@ -59,7 +63,11 @@ export class GroupsService {
     return this.groupMemberRepository.save(member);
   }
 
-  async removeMember(groupId: string, requesterId: string, userId: string): Promise<void> {
+  async removeMember(
+    groupId: string,
+    requesterId: string,
+    userId: string,
+  ): Promise<void> {
     await this.verifyManagerAccess(groupId, requesterId);
 
     const member = await this.groupMemberRepository.findOne({
@@ -71,7 +79,9 @@ export class GroupsService {
 
     if (member.role === GroupMemberRole.OWNER) {
       if (requesterId !== userId) {
-        throw new ForbiddenException('Only the owner can remove themselves from the group');
+        throw new ForbiddenException(
+          'Only the owner can remove themselves from the group',
+        );
       }
       await this.promoteOldestAdminToOwner(groupId);
     }
@@ -79,12 +89,18 @@ export class GroupsService {
     await this.groupMemberRepository.delete(member.id);
   }
 
-  async transferOwnership(groupId: string, requesterId: string, newOwnerId: string): Promise<void> {
+  async transferOwnership(
+    groupId: string,
+    requesterId: string,
+    newOwnerId: string,
+  ): Promise<void> {
     const requesterMember = await this.groupMemberRepository.findOne({
       where: { groupId, userId: requesterId },
     });
     if (!requesterMember || requesterMember.role !== GroupMemberRole.OWNER) {
-      throw new ForbiddenException('Only the group owner can transfer ownership');
+      throw new ForbiddenException(
+        'Only the group owner can transfer ownership',
+      );
     }
 
     if (requesterId === newOwnerId) {
@@ -98,8 +114,12 @@ export class GroupsService {
       throw new NotFoundException('New owner is not a member of this group');
     }
 
-    await this.groupMemberRepository.update(requesterMember.id, { role: GroupMemberRole.ADMIN });
-    await this.groupMemberRepository.update(newOwnerMember.id, { role: GroupMemberRole.OWNER });
+    await this.groupMemberRepository.update(requesterMember.id, {
+      role: GroupMemberRole.ADMIN,
+    });
+    await this.groupMemberRepository.update(newOwnerMember.id, {
+      role: GroupMemberRole.OWNER,
+    });
     await this.groupRepository.update(groupId, { ownerId: newOwnerId });
   }
 
@@ -111,12 +131,17 @@ export class GroupsService {
     });
   }
 
-  private async verifyManagerAccess(groupId: string, userId: string): Promise<void> {
+  private async verifyManagerAccess(
+    groupId: string,
+    userId: string,
+  ): Promise<void> {
     const member = await this.groupMemberRepository.findOne({
       where: { groupId, userId },
     });
     if (!member || !MANAGER_ROLES.has(member.role)) {
-      throw new ForbiddenException('Only group owners and admins can manage members');
+      throw new ForbiddenException(
+        'Only group owners and admins can manage members',
+      );
     }
   }
 
@@ -130,7 +155,11 @@ export class GroupsService {
         'Cannot leave the group: no admin to promote. Transfer ownership first.',
       );
     }
-    await this.groupMemberRepository.update(adminToPromote.id, { role: GroupMemberRole.OWNER });
-    await this.groupRepository.update(groupId, { ownerId: adminToPromote.userId });
+    await this.groupMemberRepository.update(adminToPromote.id, {
+      role: GroupMemberRole.OWNER,
+    });
+    await this.groupRepository.update(groupId, {
+      ownerId: adminToPromote.userId,
+    });
   }
 }

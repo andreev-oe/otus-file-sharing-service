@@ -26,10 +26,17 @@ export class PermissionsController {
   constructor(private readonly permissionsService: PermissionsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Выдать права доступа пользователю, группе или всем на файл/папку' })
+  @ApiOperation({
+    summary: 'Выдать права доступа пользователю, группе или всем на файл/папку',
+  })
   grant(@CurrentUser() user: User, @Body() dto: CreatePermissionDto) {
-    if (dto.subjectType === SubjectType.EVERYONE && user.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Только системный администратор может выдавать права всем пользователям');
+    if (
+      dto.subjectType === SubjectType.EVERYONE &&
+      user.role !== UserRole.ADMIN
+    ) {
+      throw new ForbiddenException(
+        'Только системный администратор может выдавать права всем пользователям',
+      );
     }
     return this.permissionsService.grant(dto);
   }

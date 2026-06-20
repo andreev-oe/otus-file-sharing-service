@@ -8,6 +8,8 @@ export class AddFolderTotalSize1750244900000 implements MigrationInterface {
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE folders DROP COLUMN IF EXISTS total_size`);
+    await queryRunner.query(
+      `ALTER TABLE folders DROP COLUMN IF EXISTS total_size`,
+    );
   }
 }

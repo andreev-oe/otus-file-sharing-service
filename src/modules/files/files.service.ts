@@ -73,7 +73,11 @@ export class FilesService {
     const fileId = crypto.randomUUID();
     const s3Key = `${FILE_S3_KEY_PREFIX}${uploadedById}/${fileId}/${uploadedFile.originalname}`;
 
-    await this.storageService.upload(s3Key, uploadedFile.buffer, uploadedFile.mimetype);
+    await this.storageService.upload(
+      s3Key,
+      uploadedFile.buffer,
+      uploadedFile.mimetype,
+    );
 
     try {
       const file = this.fileRepository.create({
@@ -87,8 +91,15 @@ export class FilesService {
         version: nextVersion,
       });
       const saved = await this.fileRepository.save(file);
+      this.eventBus.fileCreated.next({
+        fileId: saved.id,
+        ownerId: uploadedById,
+      });
       if (resolvedFolderId !== null) {
-        this.eventBus.fileStorageChanged.next({ folderId: resolvedFolderId, sizeDelta: saved.size });
+        this.eventBus.fileStorageChanged.next({
+          folderId: resolvedFolderId,
+          sizeDelta: saved.size,
+        });
       }
       return saved;
     } catch (error) {
@@ -107,7 +118,10 @@ export class FilesService {
     return file;
   }
 
-  async getDownloadUrl(id: string, uploadedById: string): Promise<{ url: string }> {
+  async getDownloadUrl(
+    id: string,
+    uploadedById: string,
+  ): Promise<{ url: string }> {
     const cacheKey = `${PRESIGNED_URL_CACHE_KEY_PREFIX}${id}`;
     const cachedUrl = await this.redis.get(cacheKey);
     if (cachedUrl) {
@@ -120,11 +134,20 @@ export class FilesService {
       PRESIGNED_URL_TTL_SECONDS,
     );
 
-    await this.redis.set(cacheKey, presignedUrl, 'EX', PRESIGNED_URL_CACHE_TTL_SECONDS);
+    await this.redis.set(
+      cacheKey,
+      presignedUrl,
+      'EX',
+      PRESIGNED_URL_CACHE_TTL_SECONDS,
+    );
     return { url: presignedUrl };
   }
 
-  async update(id: string, uploadedById: string, dto: UpdateFileDto): Promise<File> {
+  async update(
+    id: string,
+    uploadedById: string,
+    dto: UpdateFileDto,
+  ): Promise<File> {
     const file = await this.findById(id, uploadedById);
 
     const updatedFields: Partial<File> = {};
@@ -144,10 +167,16 @@ export class FilesService {
 
     if (dto.folderId !== undefined && dto.folderId !== file.folderId) {
       if (file.folderId !== null) {
-        this.eventBus.fileStorageChanged.next({ folderId: file.folderId, sizeDelta: -file.size });
+        this.eventBus.fileStorageChanged.next({
+          folderId: file.folderId,
+          sizeDelta: -file.size,
+        });
       }
       if (dto.folderId !== null) {
-        this.eventBus.fileStorageChanged.next({ folderId: dto.folderId, sizeDelta: file.size });
+        this.eventBus.fileStorageChanged.next({
+          folderId: dto.folderId,
+          sizeDelta: file.size,
+        });
       }
     }
 
@@ -159,7 +188,10 @@ export class FilesService {
     await this.fileRepository.update(id, { isDeleted: true });
     await this.invalidateDownloadUrlCache(id);
     if (file.folderId !== null) {
-      this.eventBus.fileStorageChanged.next({ folderId: file.folderId, sizeDelta: -file.size });
+      this.eventBus.fileStorageChanged.next({
+        folderId: file.folderId,
+        sizeDelta: -file.size,
+      });
     }
   }
 
@@ -176,7 +208,10 @@ export class FilesService {
     });
   }
 
-  async findByFolder(folderId: string | null, uploadedById: string): Promise<File[]> {
+  async findByFolder(
+    folderId: string | null,
+    uploadedById: string,
+  ): Promise<File[]> {
     return this.fileRepository.find({
       where: { folderId: folderId ?? IsNull(), uploadedById, isDeleted: false },
       order: { name: 'ASC' },
@@ -199,7 +234,12 @@ export class FilesService {
     uploadedById: string,
   ): Promise<number> {
     const latestVersion = await this.fileRepository.findOne({
-      where: { name, folderId: folderId ?? IsNull(), uploadedById, isDeleted: false },
+      where: {
+        name,
+        folderId: folderId ?? IsNull(),
+        uploadedById,
+        isDeleted: false,
+      },
       order: { version: 'DESC' },
     });
 
@@ -209,7 +249,9 @@ export class FilesService {
 
   private validateMimeType(mimeType: string): void {
     if (!ALLOWED_MIME_TYPES.has(mimeType)) {
-      throw new UnsupportedMediaTypeException(`File type "${mimeType}" is not allowed`);
+      throw new UnsupportedMediaTypeException(
+        `File type "${mimeType}" is not allowed`,
+      );
     }
   }
 

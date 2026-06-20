@@ -16,13 +16,17 @@ export class ShareLink {
   @Column()
   fileId: string;
 
-  @ManyToOne(() => File)
+  @ManyToOne(() => {
+    return File;
+  })
   file: File;
 
   @Column()
   createdById: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => {
+    return User;
+  })
   createdBy: User;
 
   @Column({ nullable: true, type: 'timestamptz' })

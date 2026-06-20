@@ -55,7 +55,8 @@ export class ReportsProcessor extends WorkerHost {
     const rows = await this.fetchData(job.data);
     await job.updateProgress(PROGRESS_DATA_FETCHED);
 
-    const mimeType = job.data.format === ReportFormat.CSV ? 'text/csv' : 'application/pdf';
+    const mimeType =
+      job.data.format === ReportFormat.CSV ? 'text/csv' : 'application/pdf';
     const buffer =
       job.data.format === ReportFormat.CSV
         ? await this.generateCsv(rows)
@@ -69,7 +70,9 @@ export class ReportsProcessor extends WorkerHost {
     return { s3Key };
   }
 
-  private async fetchData(data: ReportJobData): Promise<Record<string, unknown>[]> {
+  private async fetchData(
+    data: ReportJobData,
+  ): Promise<Record<string, unknown>[]> {
     if (data.type === ReportType.USER) {
       return this.fetchUserReport(data);
     }
@@ -79,7 +82,9 @@ export class ReportsProcessor extends WorkerHost {
     return this.fetchGroupReport(data);
   }
 
-  private async fetchUserReport(data: ReportJobData): Promise<Record<string, unknown>[]> {
+  private async fetchUserReport(
+    data: ReportJobData,
+  ): Promise<Record<string, unknown>[]> {
     const queryBuilder = this.entityManager
       .createQueryBuilder(File, 'file')
       .where('file.uploadedById = :subjectId', { subjectId: data.subjectId })
@@ -106,7 +111,9 @@ export class ReportsProcessor extends WorkerHost {
     });
   }
 
-  private async fetchFolderReport(data: ReportJobData): Promise<Record<string, unknown>[]> {
+  private async fetchFolderReport(
+    data: ReportJobData,
+  ): Promise<Record<string, unknown>[]> {
     const folder = await this.entityManager
       .createQueryBuilder(Folder, 'folder')
       .where('folder.id = :id', { id: data.subjectId })
@@ -124,9 +131,12 @@ export class ReportsProcessor extends WorkerHost {
       .andWhere('folder.isDeleted = false')
       .getMany();
 
-    const folderIds = [data.subjectId, ...descendants.map((descendant) => {
-      return descendant.id;
-    })];
+    const folderIds = [
+      data.subjectId,
+      ...descendants.map((descendant) => {
+        return descendant.id;
+      }),
+    ];
 
     const queryBuilder = this.entityManager
       .createQueryBuilder(File, 'file')
@@ -154,7 +164,9 @@ export class ReportsProcessor extends WorkerHost {
     });
   }
 
-  private async fetchGroupReport(data: ReportJobData): Promise<Record<string, unknown>[]> {
+  private async fetchGroupReport(
+    data: ReportJobData,
+  ): Promise<Record<string, unknown>[]> {
     const members = await this.entityManager
       .createQueryBuilder(GroupMember, 'member')
       .leftJoinAndSelect('member.user', 'user')
@@ -184,7 +196,9 @@ export class ReportsProcessor extends WorkerHost {
       csvStream.on('data', (chunk: Buffer | string) => {
         chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
       });
-      csvStream.on('end', () => { resolve(Buffer.concat(chunks)); });
+      csvStream.on('end', () => {
+        resolve(Buffer.concat(chunks));
+      });
       csvStream.on('error', reject);
       for (const row of rows) {
         csvStream.write(row);
@@ -193,26 +207,41 @@ export class ReportsProcessor extends WorkerHost {
     });
   }
 
-  private generatePdf(jobData: ReportJobData, rows: Record<string, unknown>[]): Promise<Buffer> {
+  private generatePdf(
+    jobData: ReportJobData,
+    rows: Record<string, unknown>[],
+  ): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const document = new PDFDocument({ margin: PDF_MARGIN });
       const chunks: Buffer[] = [];
-      document.on('data', (chunk: Buffer) => { chunks.push(chunk); });
-      document.on('end', () => { resolve(Buffer.concat(chunks)); });
+      document.on('data', (chunk: Buffer) => {
+        chunks.push(chunk);
+      });
+      document.on('end', () => {
+        resolve(Buffer.concat(chunks));
+      });
       document.on('error', reject);
 
-      document.fontSize(PDF_TITLE_FONT_SIZE).text(`${jobData.type} Report`, { align: 'center' });
+      document
+        .fontSize(PDF_TITLE_FONT_SIZE)
+        .text(`${jobData.type} Report`, { align: 'center' });
       document.moveDown();
-      document.fontSize(PDF_SUBTITLE_FONT_SIZE).text(`Generated: ${new Date().toISOString()}`);
+      document
+        .fontSize(PDF_SUBTITLE_FONT_SIZE)
+        .text(`Generated: ${new Date().toISOString()}`);
       document.moveDown(PDF_SECTION_SPACING);
 
       if (rows.length === 0) {
-        document.fontSize(PDF_SUBTITLE_FONT_SIZE).text('No data available for the selected period.');
+        document
+          .fontSize(PDF_SUBTITLE_FONT_SIZE)
+          .text('No data available for the selected period.');
       } else {
         const headers = Object.keys(rows[0]);
         for (const row of rows) {
           for (const header of headers) {
-            document.fontSize(PDF_CELL_FONT_SIZE).text(`${header}: ${String(row[header] ?? '')}`);
+            document
+              .fontSize(PDF_CELL_FONT_SIZE)
+              .text(`${header}: ${String(row[header] ?? '')}`);
           }
           document.moveDown(PDF_ROW_SPACING);
           document

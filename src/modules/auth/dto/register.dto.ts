@@ -17,8 +17,14 @@ export class RegisterDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ example: 'ivan_ivanov', description: 'Уникальный никнейм (3–32 символа, латиница, цифры, _)' })
+  @ApiProperty({
+    example: 'ivan_ivanov',
+    description: 'Уникальный никнейм (3–32 символа, латиница, цифры, _)',
+  })
   @IsString()
-  @Matches(USERNAME_PATTERN, { message: 'username may only contain letters, numbers and underscores (3–32 chars)' })
+  @Matches(USERNAME_PATTERN, {
+    message:
+      'username may only contain letters, numbers and underscores (3–32 chars)',
+  })
   username: string;
 }

@@ -12,7 +12,8 @@ import { Observable, tap } from 'rxjs';
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
   constructor(
-    @Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: LoggerService,
+    @Inject(WINSTON_MODULE_NEST_PROVIDER)
+    private readonly logger: LoggerService,
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {

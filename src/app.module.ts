@@ -7,7 +7,6 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { PermissionsGuard } from './common/guards/permissions.guard';
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
@@ -42,7 +41,14 @@ function buildWinstonConsoleFormat(nodeEnv: string): winston.Logform.Format {
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, jwtConfig, redisConfig, s3Config, throttlerConfig],
+      load: [
+        appConfig,
+        databaseConfig,
+        jwtConfig,
+        redisConfig,
+        s3Config,
+        throttlerConfig,
+      ],
     }),
     TypeOrmModule.forRootAsync({
       useFactory: (
@@ -65,11 +71,15 @@ function buildWinstonConsoleFormat(nodeEnv: string): winston.Logform.Format {
       inject: [databaseConfig.KEY, appConfig.KEY],
     }),
     ThrottlerModule.forRootAsync({
-      useFactory: (throttlerConfiguration: ConfigType<typeof throttlerConfig>) => {
-        return [{
-          ttl: throttlerConfiguration.ttl,
-          limit: throttlerConfiguration.limit,
-        }];
+      useFactory: (
+        throttlerConfiguration: ConfigType<typeof throttlerConfig>,
+      ) => {
+        return [
+          {
+            ttl: throttlerConfiguration.ttl,
+            limit: throttlerConfiguration.limit,
+          },
+        ];
       },
       inject: [throttlerConfig.KEY],
     }),
@@ -107,10 +117,6 @@ function buildWinstonConsoleFormat(nodeEnv: string): winston.Logform.Format {
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: PermissionsGuard,
     },
     {
       provide: APP_INTERCEPTOR,

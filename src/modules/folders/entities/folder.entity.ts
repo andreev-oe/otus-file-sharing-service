@@ -22,7 +22,9 @@ export class Folder {
   @Column()
   ownerId: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => {
+    return User;
+  })
   owner: User;
 
   @Column()

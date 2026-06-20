@@ -17,16 +17,24 @@ export class GroupMember {
   @Column()
   groupId: string;
 
-  @ManyToOne(() => Group)
+  @ManyToOne(() => {
+    return Group;
+  })
   group: Group;
 
   @Column()
   userId: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => {
+    return User;
+  })
   user: User;
 
-  @Column({ type: 'enum', enum: GroupMemberRole, default: GroupMemberRole.MEMBER })
+  @Column({
+    type: 'enum',
+    enum: GroupMemberRole,
+    default: GroupMemberRole.MEMBER,
+  })
   role: GroupMemberRole;
 
   @CreateDateColumn()

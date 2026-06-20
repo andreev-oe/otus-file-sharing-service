@@ -10,8 +10,10 @@ export class MailService {
   private readonly transporter: Transporter;
 
   constructor(
-    @Inject(smtpConfig.KEY) private readonly smtpConfiguration: ConfigType<typeof smtpConfig>,
-    @Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: LoggerService,
+    @Inject(smtpConfig.KEY)
+    private readonly smtpConfiguration: ConfigType<typeof smtpConfig>,
+    @Inject(WINSTON_MODULE_NEST_PROVIDER)
+    private readonly logger: LoggerService,
   ) {
     this.transporter = createTransport({
       host: smtpConfiguration.host,
@@ -38,7 +40,9 @@ export class MailService {
         html: `<p>Здравствуйте, <strong>${toName}</strong>!</p><p><strong>${authorName}</strong> упомянул вас в заметке (ID: <code>${noteId}</code>).</p><p>С уважением,<br>FileShare</p>`,
       });
     } catch (error) {
-      this.logger.error(`Failed to send mention notification to ${toEmail}: ${String(error)}`);
+      this.logger.error(
+        `Failed to send mention notification to ${toEmail}: ${String(error)}`,
+      );
     }
   }
 }

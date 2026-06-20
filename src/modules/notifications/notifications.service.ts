@@ -18,9 +18,15 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
-    this.usersMentionedSubscription = this.eventBus.usersMentioned.subscribe(async (event) => {
-      await this.handleUsersMentioned(event.mentionedUsernames, event.authorId, event.noteId);
-    });
+    this.usersMentionedSubscription = this.eventBus.usersMentioned.subscribe(
+      async (event) => {
+        await this.handleUsersMentioned(
+          event.mentionedUsernames,
+          event.authorId,
+          event.noteId,
+        );
+      },
+    );
   }
 
   onModuleDestroy() {
@@ -53,7 +59,12 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
 
     for (const user of mentionedUsers) {
       if (user.id !== authorId) {
-        await this.mailService.sendMentionNotification(user.email, user.name, author.name, noteId);
+        await this.mailService.sendMentionNotification(
+          user.email,
+          user.name,
+          author.name,
+          noteId,
+        );
       }
     }
   }

@@ -4,7 +4,11 @@ import {
   Entity,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { PermissionLevel, ResourceType, SubjectType } from '../../../common/enums';
+import {
+  PermissionLevel,
+  ResourceType,
+  SubjectType,
+} from '../../../common/enums';
 
 @Entity('permissions')
 export class Permission {

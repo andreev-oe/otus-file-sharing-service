@@ -546,6 +546,18 @@ async function upsertShareLink(
   );
 }
 
+async function clearDatabase(dataSource: DataSource): Promise<void> {
+  await dataSource.getRepository(ShareLink).createQueryBuilder().delete().execute();
+  await dataSource.getRepository(Note).createQueryBuilder().delete().execute();
+  await dataSource.getRepository(Permission).createQueryBuilder().delete().execute();
+  await dataSource.getRepository(GroupMember).createQueryBuilder().delete().execute();
+  await dataSource.getRepository(Group).createQueryBuilder().delete().execute();
+  await dataSource.getRepository(File).createQueryBuilder().delete().execute();
+  await dataSource.getRepository(Folder).createQueryBuilder().update(Folder).set({ parentId: null }).execute();
+  await dataSource.getRepository(Folder).createQueryBuilder().delete().execute();
+  await dataSource.getRepository(User).createQueryBuilder().delete().execute();
+}
+
 async function main(): Promise<void> {
   console.log('Connecting to database...');
 
@@ -584,6 +596,9 @@ async function main(): Promise<void> {
   const bucket = process.env.S3_BUCKET ?? 'fileshare';
 
   try {
+    console.log('Clearing database...');
+    await clearDatabase(dataSource);
+
     console.log('Ensuring S3 bucket exists...');
     await ensureBucket(s3Client, bucket);
 

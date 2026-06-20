@@ -1,4 +1,10 @@
-import { Inject, Injectable, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import type Redis from 'ioredis';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Subscription } from 'rxjs';
@@ -31,6 +37,7 @@ function isPermissionLevel(value: string): value is PermissionLevel {
 @Injectable()
 export class PermissionsService implements OnModuleInit, OnModuleDestroy {
   private folderCreatedSubscription: Subscription;
+  private fileCreatedSubscription: Subscription;
   private cascadePermissionsSubscription: Subscription;
 
   constructor(
@@ -43,25 +50,48 @@ export class PermissionsService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
-    this.folderCreatedSubscription = this.eventBus.folderCreated.subscribe(async (event) => {
-      if (event.parentId) {
-        await this.inheritFromParent(event.parentId, event.folderId);
-      }
-    });
-    this.cascadePermissionsSubscription = this.eventBus.cascadePermissionsToFolders.subscribe(
+    this.folderCreatedSubscription = this.eventBus.folderCreated.subscribe(
       async (event) => {
-        await this.applyCascade(event);
+        await this.upsertPermission(
+          SubjectType.USER,
+          event.ownerId,
+          ResourceType.FOLDER,
+          event.folderId,
+          PermissionLevel.MANAGE,
+        );
+        if (event.parentId) {
+          await this.inheritFromParent(event.parentId, event.folderId);
+        }
       },
     );
+    this.fileCreatedSubscription = this.eventBus.fileCreated.subscribe(
+      async (event) => {
+        await this.upsertPermission(
+          SubjectType.USER,
+          event.ownerId,
+          ResourceType.FILE,
+          event.fileId,
+          PermissionLevel.MANAGE,
+        );
+      },
+    );
+    this.cascadePermissionsSubscription =
+      this.eventBus.cascadePermissionsToFolders.subscribe(async (event) => {
+        await this.applyCascade(event);
+      });
   }
 
   onModuleDestroy() {
     this.folderCreatedSubscription.unsubscribe();
+    this.fileCreatedSubscription.unsubscribe();
     this.cascadePermissionsSubscription.unsubscribe();
   }
 
   async grant(dto: CreatePermissionDto): Promise<Permission> {
-    const subjectId = dto.subjectType === SubjectType.EVERYONE ? EVERYONE_SUBJECT_ID : dto.subjectId ?? '';
+    const subjectId =
+      dto.subjectType === SubjectType.EVERYONE
+        ? EVERYONE_SUBJECT_ID
+        : (dto.subjectId ?? '');
     const result = await this.upsertPermission(
       dto.subjectType,
       subjectId,
@@ -84,12 +114,17 @@ export class PermissionsService implements OnModuleInit, OnModuleDestroy {
   }
 
   async revoke(id: string): Promise<void> {
-    const permission = await this.permissionRepository.findOne({ where: { id } });
+    const permission = await this.permissionRepository.findOne({
+      where: { id },
+    });
     if (!permission) {
       throw new NotFoundException('Permission not found');
     }
     await this.permissionRepository.delete(id);
-    await this.invalidateResourceCache(permission.resourceType, permission.resourceId);
+    await this.invalidateResourceCache(
+      permission.resourceType,
+      permission.resourceId,
+    );
 
     if (permission.resourceType === ResourceType.FOLDER) {
       this.eventBus.permissionChangedOnFolder.next({
@@ -108,11 +143,18 @@ export class PermissionsService implements OnModuleInit, OnModuleDestroy {
     resourceId: string,
     required: PermissionLevel,
   ): Promise<boolean> {
-    const highestLevel = await this.resolveHighestLevel(userId, groupIds, resourceType, resourceId);
+    const highestLevel = await this.resolveHighestLevel(
+      userId,
+      groupIds,
+      resourceType,
+      resourceId,
+    );
     if (!highestLevel) {
       return false;
     }
-    return PERMISSION_LEVEL_ORDER[highestLevel] >= PERMISSION_LEVEL_ORDER[required];
+    return (
+      PERMISSION_LEVEL_ORDER[highestLevel] >= PERMISSION_LEVEL_ORDER[required]
+    );
   }
 
   async checkForUser(
@@ -129,7 +171,9 @@ export class PermissionsService implements OnModuleInit, OnModuleDestroy {
         return false;
       }
       if (isPermissionLevel(cached)) {
-        return PERMISSION_LEVEL_ORDER[cached] >= PERMISSION_LEVEL_ORDER[required];
+        return (
+          PERMISSION_LEVEL_ORDER[cached] >= PERMISSION_LEVEL_ORDER[required]
+        );
       }
     }
 
@@ -140,7 +184,12 @@ export class PermissionsService implements OnModuleInit, OnModuleDestroy {
     const groupIds = memberships.map((membership) => {
       return membership.groupId;
     });
-    const highestLevel = await this.resolveHighestLevel(userId, groupIds, resourceType, resourceId);
+    const highestLevel = await this.resolveHighestLevel(
+      userId,
+      groupIds,
+      resourceType,
+      resourceId,
+    );
 
     await this.redis.set(
       cacheKey,
@@ -152,7 +201,9 @@ export class PermissionsService implements OnModuleInit, OnModuleDestroy {
     if (!highestLevel) {
       return false;
     }
-    return PERMISSION_LEVEL_ORDER[highestLevel] >= PERMISSION_LEVEL_ORDER[required];
+    return (
+      PERMISSION_LEVEL_ORDER[highestLevel] >= PERMISSION_LEVEL_ORDER[required]
+    );
   }
 
   private async resolveHighestLevel(
@@ -189,7 +240,8 @@ export class PermissionsService implements OnModuleInit, OnModuleDestroy {
     }
 
     return permissions.reduce((best, current) => {
-      return PERMISSION_LEVEL_ORDER[current.permission] > PERMISSION_LEVEL_ORDER[best]
+      return PERMISSION_LEVEL_ORDER[current.permission] >
+        PERMISSION_LEVEL_ORDER[best]
         ? current.permission
         : best;
     }, permissions[0].permission);
@@ -214,7 +266,13 @@ export class PermissionsService implements OnModuleInit, OnModuleDestroy {
     }
 
     const result = await this.permissionRepository.save(
-      this.permissionRepository.create({ subjectType, subjectId, resourceType, resourceId, permission: permissionLevel }),
+      this.permissionRepository.create({
+        subjectType,
+        subjectId,
+        resourceType,
+        resourceId,
+        permission: permissionLevel,
+      }),
     );
     await this.invalidateResourceCache(resourceType, resourceId);
     return result;
@@ -236,9 +294,14 @@ export class PermissionsService implements OnModuleInit, OnModuleDestroy {
     await this.invalidateResourceCache(resourceType, resourceId);
   }
 
-  private async applyCascade(event: CascadePermissionsToFoldersEvent): Promise<void> {
+  private async applyCascade(
+    event: CascadePermissionsToFoldersEvent,
+  ): Promise<void> {
     for (const folderId of event.folderIds) {
-      if (event.action === PermissionChangeAction.GRANT && event.permissionLevel) {
+      if (
+        event.action === PermissionChangeAction.GRANT &&
+        event.permissionLevel
+      ) {
         await this.upsertPermission(
           event.subjectType,
           event.subjectId,
@@ -257,7 +320,10 @@ export class PermissionsService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async inheritFromParent(parentFolderId: string, childFolderId: string): Promise<void> {
+  private async inheritFromParent(
+    parentFolderId: string,
+    childFolderId: string,
+  ): Promise<void> {
     const parentPermissions = await this.permissionRepository.find({
       where: { resourceType: ResourceType.FOLDER, resourceId: parentFolderId },
     });
@@ -275,7 +341,10 @@ export class PermissionsService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async invalidateResourceCache(resourceType: ResourceType, resourceId: string): Promise<void> {
+  private async invalidateResourceCache(
+    resourceType: ResourceType,
+    resourceId: string,
+  ): Promise<void> {
     const pattern = `${PERMISSION_CACHE_KEY_PREFIX}${resourceType}:${resourceId}:*`;
     const keys = await this.redis.keys(pattern);
     if (keys.length > 0) {

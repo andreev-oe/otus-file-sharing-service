@@ -1,6 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsUUID, ValidateIf } from 'class-validator';
-import { PermissionLevel, ResourceType, SubjectType } from '../../../common/enums';
+import {
+  PermissionLevel,
+  ResourceType,
+  SubjectType,
+} from '../../../common/enums';
 
 export class CreatePermissionDto {
   @ApiProperty({ enum: SubjectType, example: SubjectType.USER })

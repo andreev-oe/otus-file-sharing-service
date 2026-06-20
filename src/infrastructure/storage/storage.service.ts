@@ -15,7 +15,8 @@ export class StorageService {
   private readonly bucket: string;
 
   constructor(
-    @Inject(s3Config.KEY) private readonly s3Configuration: ConfigType<typeof s3Config>,
+    @Inject(s3Config.KEY)
+    private readonly s3Configuration: ConfigType<typeof s3Config>,
   ) {
     this.client = new S3Client({
       region: s3Configuration.region,

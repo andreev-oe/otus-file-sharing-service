@@ -22,7 +22,9 @@ export class Group {
   @Column()
   ownerId: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => {
+    return User;
+  })
   owner: User;
 
   @CreateDateColumn()

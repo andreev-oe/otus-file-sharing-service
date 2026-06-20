@@ -11,7 +11,10 @@ export class FolderTreeNodeDto {
   updatedAt: Date;
   children: FolderTreeNodeDto[];
 
-  static fromEntity(folder: Folder, children: FolderTreeNodeDto[]): FolderTreeNodeDto {
+  static fromEntity(
+    folder: Folder,
+    children: FolderTreeNodeDto[],
+  ): FolderTreeNodeDto {
     const node = new FolderTreeNodeDto();
     node.id = folder.id;
     node.name = folder.name;

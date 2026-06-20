@@ -23,7 +23,10 @@ export class ShareLinksService {
     private readonly shareLinkRepository: Repository<ShareLink>,
   ) {}
 
-  async create(createdById: string, dto: CreateShareLinkDto): Promise<ShareLink> {
+  async create(
+    createdById: string,
+    dto: CreateShareLinkDto,
+  ): Promise<ShareLink> {
     const expiresAt = dto.ttlSeconds
       ? new Date(Date.now() + dto.ttlSeconds * MILLISECONDS_PER_SECOND)
       : null;
@@ -85,7 +88,9 @@ export class ShareLinksService {
   }
 
   async deactivate(id: string, userId: string): Promise<void> {
-    const link = await this.shareLinkRepository.findOne({ where: { token: id } });
+    const link = await this.shareLinkRepository.findOne({
+      where: { token: id },
+    });
     if (!link) {
       throw new NotFoundException('Share link not found');
     }

@@ -1,5 +1,9 @@
 import { registerAs } from '@nestjs/config';
-import { DEFAULT_SMTP_FROM, DEFAULT_SMTP_HOST, DEFAULT_SMTP_PORT } from './config.consts';
+import {
+  DEFAULT_SMTP_FROM,
+  DEFAULT_SMTP_HOST,
+  DEFAULT_SMTP_PORT,
+} from './config.consts';
 
 export default registerAs('smtp', () => {
   return {

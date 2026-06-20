@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { StorageService } from '../../infrastructure/storage/storage.service';
@@ -16,11 +21,15 @@ const JOB_STATUS_COMPLETED = 'completed';
 @Injectable()
 export class ReportsService {
   constructor(
-    @InjectQueue(REPORTS_QUEUE) private readonly reportsQueue: Queue<ReportJobData, ReportJobResult>,
+    @InjectQueue(REPORTS_QUEUE)
+    private readonly reportsQueue: Queue<ReportJobData, ReportJobResult>,
     private readonly storageService: StorageService,
   ) {}
 
-  async enqueue(userId: string, dto: CreateReportDto): Promise<{ jobId: string }> {
+  async enqueue(
+    userId: string,
+    dto: CreateReportDto,
+  ): Promise<{ jobId: string }> {
     const jobData: ReportJobData = {
       userId,
       type: dto.type,
@@ -36,7 +45,9 @@ export class ReportsService {
     return { jobId: job.id };
   }
 
-  async getStatus(jobId: string): Promise<{ status: string; progress: number }> {
+  async getStatus(
+    jobId: string,
+  ): Promise<{ status: string; progress: number }> {
     const job = await this.reportsQueue.getJob(jobId);
     if (!job) {
       throw new NotFoundException('Job not found');

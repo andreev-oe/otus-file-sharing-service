@@ -41,16 +41,14 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
-    this.permissionChangedSubscription = this.eventBus.permissionChangedOnFolder.subscribe(
-      async (event) => {
+    this.permissionChangedSubscription =
+      this.eventBus.permissionChangedOnFolder.subscribe(async (event) => {
         await this.handlePermissionChangedOnFolder(event);
-      },
-    );
-    this.fileStorageChangedSubscription = this.eventBus.fileStorageChanged.subscribe(
-      async (event) => {
+      });
+    this.fileStorageChangedSubscription =
+      this.eventBus.fileStorageChanged.subscribe(async (event) => {
         await this.applyFileSizeChange(event);
-      },
-    );
+      });
   }
 
   onModuleDestroy() {
@@ -66,7 +64,9 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
       const parentFolder = await this.findOwnedOrFail(dto.parentId, ownerId);
       const currentDepth = parentFolder.path.split('/').filter(Boolean).length;
       if (currentDepth >= MAX_FOLDER_DEPTH) {
-        throw new BadRequestException(`Maximum folder depth of ${MAX_FOLDER_DEPTH} reached`);
+        throw new BadRequestException(
+          `Maximum folder depth of ${MAX_FOLDER_DEPTH} reached`,
+        );
       }
       path = `${parentFolder.path}/${folderId}`;
     } else {
@@ -83,13 +83,19 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
 
     const saved = await this.folderRepository.save(folder);
     await this.invalidateTreeCache(ownerId);
-    this.eventBus.folderCreated.next({ folderId: saved.id, parentId: dto.parentId ?? null });
+    this.eventBus.folderCreated.next({
+      folderId: saved.id,
+      ownerId,
+      parentId: dto.parentId ?? null,
+    });
     return saved;
   }
 
   async getTree(ownerId: string, role: UserRole): Promise<FolderTreeNodeDto[]> {
     const isAdmin = role === UserRole.ADMIN;
-    const cacheKey = isAdmin ? ADMIN_TREE_CACHE_KEY : `${FOLDER_TREE_CACHE_KEY_PREFIX}${ownerId}`;
+    const cacheKey = isAdmin
+      ? ADMIN_TREE_CACHE_KEY
+      : `${FOLDER_TREE_CACHE_KEY_PREFIX}${ownerId}`;
 
     const cached = await this.redis.get(cacheKey);
     if (cached !== null) {
@@ -103,7 +109,12 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
     });
 
     const tree = this.buildTree(allFolders, null);
-    await this.redis.set(cacheKey, JSON.stringify(tree), 'EX', FOLDER_TREE_CACHE_TTL_SECONDS);
+    await this.redis.set(
+      cacheKey,
+      JSON.stringify(tree),
+      'EX',
+      FOLDER_TREE_CACHE_TTL_SECONDS,
+    );
     return tree;
   }
 
@@ -116,10 +127,15 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  async update(id: string, ownerId: string, dto: UpdateFolderDto): Promise<Folder> {
+  async update(
+    id: string,
+    ownerId: string,
+    dto: UpdateFolderDto,
+  ): Promise<Folder> {
     const folder = await this.findOwnedOrFail(id, ownerId);
 
-    const isParentChanged = dto.parentId !== undefined && dto.parentId !== folder.parentId;
+    const isParentChanged =
+      dto.parentId !== undefined && dto.parentId !== folder.parentId;
     if (isParentChanged) {
       await this.moveToNewParent(folder, dto.parentId ?? null, ownerId);
     }
@@ -178,7 +194,9 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
       .getMany();
   }
 
-  private async applyFileSizeChange(event: FileStorageChangedEvent): Promise<void> {
+  private async applyFileSizeChange(
+    event: FileStorageChangedEvent,
+  ): Promise<void> {
     const folder = await this.folderRepository.findOne({
       where: { id: event.folderId },
       select: { path: true },
@@ -204,7 +222,9 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
       .execute();
   }
 
-  private async handlePermissionChangedOnFolder(event: PermissionChangedOnFolderEvent): Promise<void> {
+  private async handlePermissionChangedOnFolder(
+    event: PermissionChangedOnFolderEvent,
+  ): Promise<void> {
     const parentFolder = await this.folderRepository.findOne({
       where: { id: event.folderId },
       select: { path: true },
@@ -255,13 +275,22 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
     if (newParentId) {
       const newParentFolder = await this.findOwnedOrFail(newParentId, ownerId);
 
-      if (newParentFolder.path.startsWith(`${folder.path}/`) || newParentFolder.id === folder.id) {
-        throw new BadRequestException('Cannot move a folder into its own subtree');
+      if (
+        newParentFolder.path.startsWith(`${folder.path}/`) ||
+        newParentFolder.id === folder.id
+      ) {
+        throw new BadRequestException(
+          'Cannot move a folder into its own subtree',
+        );
       }
 
-      const newParentDepth = newParentFolder.path.split('/').filter(Boolean).length;
+      const newParentDepth = newParentFolder.path
+        .split('/')
+        .filter(Boolean).length;
       if (newParentDepth >= MAX_FOLDER_DEPTH) {
-        throw new BadRequestException(`Maximum folder depth of ${MAX_FOLDER_DEPTH} reached`);
+        throw new BadRequestException(
+          `Maximum folder depth of ${MAX_FOLDER_DEPTH} reached`,
+        );
       }
 
       newPath = `${newParentFolder.path}/${folder.id}`;
@@ -271,7 +300,10 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
 
     const oldPath = folder.path;
 
-    await this.folderRepository.update(folder.id, { parentId: newParentId, path: newPath });
+    await this.folderRepository.update(folder.id, {
+      parentId: newParentId,
+      path: newPath,
+    });
 
     const descendants = await this.folderRepository
       .createQueryBuilder('folder')
@@ -286,16 +318,25 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async invalidateTreeCache(ownerId: string): Promise<void> {
-    await this.redis.del(`${FOLDER_TREE_CACHE_KEY_PREFIX}${ownerId}`, ADMIN_TREE_CACHE_KEY);
+    await this.redis.del(
+      `${FOLDER_TREE_CACHE_KEY_PREFIX}${ownerId}`,
+      ADMIN_TREE_CACHE_KEY,
+    );
   }
 
-  private buildTree(allFolders: Folder[], parentId: string | null): FolderTreeNodeDto[] {
+  private buildTree(
+    allFolders: Folder[],
+    parentId: string | null,
+  ): FolderTreeNodeDto[] {
     return allFolders
       .filter((folder) => {
         return folder.parentId === parentId;
       })
       .map((folder) => {
-        return FolderTreeNodeDto.fromEntity(folder, this.buildTree(allFolders, folder.id));
+        return FolderTreeNodeDto.fromEntity(
+          folder,
+          this.buildTree(allFolders, folder.id),
+        );
       });
   }
 }

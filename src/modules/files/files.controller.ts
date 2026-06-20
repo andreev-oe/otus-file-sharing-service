@@ -15,9 +15,15 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { PermissionLevel, ResourceType } from '../../common/enums';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -35,7 +41,9 @@ export class FilesController {
   constructor(private readonly filesService: FilesService) {}
 
   @Post('upload')
-  @ApiOperation({ summary: 'Загрузить файл (multipart/form-data, максимум 100 МБ)' })
+  @ApiOperation({
+    summary: 'Загрузить файл (multipart/form-data, максимум 100 МБ)',
+  })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -52,8 +60,13 @@ export class FilesController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Список файлов текущего пользователя (опционально по папке)' })
-  findByFolder(@CurrentUser() user: User, @Query('folderId') folderId?: string) {
+  @ApiOperation({
+    summary: 'Список файлов текущего пользователя (опционально по папке)',
+  })
+  findByFolder(
+    @CurrentUser() user: User,
+    @Query('folderId') folderId?: string,
+  ) {
     return this.filesService.findByFolder(folderId ?? null, user.id);
   }
 
@@ -65,6 +78,7 @@ export class FilesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Получить метаданные файла по ID' })
+  @UseGuards(PermissionsGuard)
   @RequirePermission(ResourceType.FILE, PermissionLevel.VIEW)
   findOne(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) {
     return this.filesService.findById(id, user.id);
@@ -72,20 +86,31 @@ export class FilesController {
 
   @Get(':id/download')
   @ApiOperation({ summary: 'Получить presigned URL для скачивания файла' })
+  @UseGuards(PermissionsGuard)
   @RequirePermission(ResourceType.FILE, PermissionLevel.VIEW)
-  getDownloadUrl(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) {
+  getDownloadUrl(
+    @CurrentUser() user: User,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.filesService.getDownloadUrl(id, user.id);
   }
 
   @Get(':id/versions')
   @ApiOperation({ summary: 'Получить историю версий файла' })
+  @UseGuards(PermissionsGuard)
   @RequirePermission(ResourceType.FILE, PermissionLevel.VIEW)
-  getVersions(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) {
+  getVersions(
+    @CurrentUser() user: User,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.filesService.getVersions(id, user.id);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Переименовать файл или переместить в другую папку' })
+  @ApiOperation({
+    summary: 'Переименовать файл или переместить в другую папку',
+  })
+  @UseGuards(PermissionsGuard)
   @RequirePermission(ResourceType.FILE, PermissionLevel.EDIT)
   update(
     @CurrentUser() user: User,
@@ -98,8 +123,12 @@ export class FilesController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Мягкое удаление файла (помечается как удалённый)' })
+  @UseGuards(PermissionsGuard)
   @RequirePermission(ResourceType.FILE, PermissionLevel.MANAGE)
-  softDelete(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) {
+  softDelete(
+    @CurrentUser() user: User,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.filesService.softDelete(id, user.id);
   }
 }

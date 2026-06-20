@@ -25,23 +25,35 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
-    @Inject(jwtConfig.KEY) private readonly jwtConfiguration: ConfigType<typeof jwtConfig>,
+    @Inject(jwtConfig.KEY)
+    private readonly jwtConfiguration: ConfigType<typeof jwtConfig>,
     @Inject(REDIS) private readonly redis: Redis,
-    @Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: LoggerService,
+    @Inject(WINSTON_MODULE_NEST_PROVIDER)
+    private readonly logger: LoggerService,
   ) {}
 
   async register(dto: RegisterDto): Promise<void> {
-    await this.usersService.create(dto.email, dto.password, dto.name, dto.username);
+    await this.usersService.create(
+      dto.email,
+      dto.password,
+      dto.name,
+      dto.username,
+    );
   }
 
-  async login(dto: LoginDto): Promise<{ accessToken: string; refreshToken: string }> {
+  async login(
+    dto: LoginDto,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) {
       this.logger.warn(`Failed login: ${dto.email} (user not found)`);
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
+    const isPasswordValid = await bcrypt.compare(
+      dto.password,
+      user.passwordHash,
+    );
     if (!isPasswordValid) {
       this.logger.warn(`Failed login: ${dto.email} (invalid password)`);
       throw new UnauthorizedException('Invalid credentials');
@@ -50,7 +62,9 @@ export class AuthService {
     return this.issueTokenPair(user.id);
   }
 
-  async refresh(token: string): Promise<{ accessToken: string; refreshToken: string }> {
+  async refresh(
+    token: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     let payload: RefreshTokenPayload;
 
     try {
@@ -65,7 +79,9 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    const storedUserId = await this.redis.get(`${REDIS_REFRESH_TOKEN_KEY_PREFIX}${payload.jti}`);
+    const storedUserId = await this.redis.get(
+      `${REDIS_REFRESH_TOKEN_KEY_PREFIX}${payload.jti}`,
+    );
     if (!storedUserId) {
       throw new UnauthorizedException('Refresh token revoked or expired');
     }
@@ -85,7 +101,8 @@ export class AuthService {
     userId: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const jti = crypto.randomUUID();
-    const { secret, accessExpiresInSeconds, refreshExpiresInSeconds } = this.jwtConfiguration;
+    const { secret, accessExpiresInSeconds, refreshExpiresInSeconds } =
+      this.jwtConfiguration;
 
     const accessToken = this.jwtService.sign(
       { sub: userId },

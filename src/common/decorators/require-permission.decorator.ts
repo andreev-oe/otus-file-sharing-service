@@ -14,5 +14,9 @@ export const RequirePermission = (
   level: PermissionLevel,
   paramName = 'id',
 ) => {
-  return SetMetadata<string, RequiredPermission>(PERMISSION_KEY, { resourceType, level, paramName });
+  return SetMetadata<string, RequiredPermission>(PERMISSION_KEY, {
+    resourceType,
+    level,
+    paramName,
+  });
 };

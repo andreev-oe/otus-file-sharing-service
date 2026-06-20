@@ -28,14 +28,18 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Вход в систему, получение токенов' })
-  login(@Body() dto: LoginDto): Promise<{ accessToken: string; refreshToken: string }> {
+  login(
+    @Body() dto: LoginDto,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     return this.authService.login(dto);
   }
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Обновление access-токена по refresh-токену' })
-  refresh(@Body() dto: RefreshTokenDto): Promise<{ accessToken: string; refreshToken: string }> {
+  refresh(
+    @Body() dto: RefreshTokenDto,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     return this.authService.refresh(dto.refreshToken);
   }
 

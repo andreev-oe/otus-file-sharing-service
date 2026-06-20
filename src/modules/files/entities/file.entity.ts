@@ -29,13 +29,20 @@ export class File {
   @Column({ nullable: true, type: 'uuid' })
   folderId: string | null;
 
-  @ManyToOne(() => Folder, { nullable: true })
+  @ManyToOne(
+    () => {
+      return Folder;
+    },
+    { nullable: true },
+  )
   folder: Folder | null;
 
   @Column()
   uploadedById: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => {
+    return User;
+  })
   uploadedBy: User;
 
   @Column({ default: 1 })

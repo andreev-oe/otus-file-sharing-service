@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { isPostgresFkViolation } from '../../common/constants/postgres-error-codes';
@@ -60,7 +65,11 @@ export class NotesService {
     return { data, total };
   }
 
-  async update(id: string, authorId: string, dto: UpdateNoteDto): Promise<Note> {
+  async update(
+    id: string,
+    authorId: string,
+    dto: UpdateNoteDto,
+  ): Promise<Note> {
     const note = await this.findOwnedOrFail(id, authorId);
     note.content = dto.content;
     note.mentions = this.extractMentions(dto.content);

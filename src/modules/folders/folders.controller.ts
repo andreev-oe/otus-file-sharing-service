@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { PermissionLevel, ResourceType } from '../../common/enums';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -36,7 +37,10 @@ export class FoldersController {
   }
 
   @Get('tree')
-  @ApiOperation({ summary: 'Получить дерево всех папок пользователя (admin видит все папки системы)' })
+  @ApiOperation({
+    summary:
+      'Получить дерево всех папок пользователя (admin видит все папки системы)',
+  })
   getTree(@CurrentUser() user: User) {
     return this.foldersService.getTree(user.id, user.role);
   }
@@ -49,13 +53,20 @@ export class FoldersController {
 
   @Get(':id/children')
   @ApiOperation({ summary: 'Получить дочерние папки указанной папки' })
+  @UseGuards(PermissionsGuard)
   @RequirePermission(ResourceType.FOLDER, PermissionLevel.VIEW)
-  getChildren(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) {
+  getChildren(
+    @CurrentUser() user: User,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.foldersService.getChildFolders(id, user.id);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Переименовать папку или переместить в другую папку' })
+  @ApiOperation({
+    summary: 'Переименовать папку или переместить в другую папку',
+  })
+  @UseGuards(PermissionsGuard)
   @RequirePermission(ResourceType.FOLDER, PermissionLevel.EDIT)
   update(
     @CurrentUser() user: User,
@@ -67,9 +78,15 @@ export class FoldersController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Мягкое удаление папки вместе с вложенными папками и файлами' })
+  @ApiOperation({
+    summary: 'Мягкое удаление папки вместе с вложенными папками и файлами',
+  })
+  @UseGuards(PermissionsGuard)
   @RequirePermission(ResourceType.FOLDER, PermissionLevel.MANAGE)
-  softDelete(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) {
+  softDelete(
+    @CurrentUser() user: User,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.foldersService.softDelete(id, user.id);
   }
 }
