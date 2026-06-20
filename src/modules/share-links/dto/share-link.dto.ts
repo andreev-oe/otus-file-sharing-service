@@ -12,10 +12,10 @@ export class ShareLinkDto {
   @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
   createdById: string;
 
-  @ApiProperty({ example: '2024-01-15T11:00:00.000Z', nullable: true })
+  @ApiProperty({ type: 'string', format: 'date-time', example: '2024-01-15T11:00:00.000Z', nullable: true })
   expiresAt: Date | null;
 
-  @ApiProperty({ example: 10, nullable: true })
+  @ApiProperty({ type: 'number', example: 10, nullable: true })
   maxDownloads: number | null;
 
   @ApiProperty({ example: 3 })

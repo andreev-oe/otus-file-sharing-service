@@ -15,10 +15,10 @@ export class UserProfileDto {
   @ApiProperty({ example: 'ivan_ivanov' })
   username: string;
 
-  @ApiProperty({ example: 'Разработчик из Москвы', nullable: true })
+  @ApiProperty({ type: 'string', example: 'Разработчик из Москвы', nullable: true })
   bio: string | null;
 
-  @ApiProperty({ example: 'https://example.com/avatar.jpg', nullable: true })
+  @ApiProperty({ type: 'string', example: 'https://example.com/avatar.jpg', nullable: true })
   avatarUrl: string | null;
 
   @ApiProperty({ enum: UserRole, example: UserRole.USER })

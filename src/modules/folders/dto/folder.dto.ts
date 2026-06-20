@@ -8,7 +8,7 @@ export class FolderDto {
   @ApiProperty({ example: 'Документы' })
   name: string;
 
-  @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', nullable: true })
+  @ApiProperty({ type: 'string', format: 'uuid', example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', nullable: true })
   parentId: string | null;
 
   @ApiProperty({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
