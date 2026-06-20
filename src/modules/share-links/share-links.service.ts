@@ -46,6 +46,11 @@ export class ShareLinksService {
       maxDownloads: dto.maxDownloads ?? null,
     });
 
+    await this.shareLinkRepository.update(
+      { fileId: dto.fileId, createdById, isActive: true },
+      { isActive: false },
+    );
+
     try {
       return await this.shareLinkRepository.save(link);
     } catch (error) {
@@ -54,6 +59,19 @@ export class ShareLinksService {
       }
       throw error;
     }
+  }
+
+  async findByFile(fileId: string, userId: string): Promise<ShareLink | null> {
+    return this.shareLinkRepository.findOne({
+      where: { fileId, createdById: userId, isActive: true },
+    });
+  }
+
+  async findAllByUser(userId: string): Promise<ShareLink[]> {
+    return this.shareLinkRepository.find({
+      where: { createdById: userId, isActive: true },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async findByToken(token: string, password?: string): Promise<ShareLink> {
