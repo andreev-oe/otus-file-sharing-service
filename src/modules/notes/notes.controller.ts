@@ -12,7 +12,12 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 const DEFAULT_PAGE = 1;
@@ -22,6 +27,7 @@ import { User } from '../users/entities/user.entity';
 import { NotesService } from './notes.service';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
+import { NoteDto, PaginatedNotesDto } from './dto/note.dto';
 
 @ApiTags('Notes')
 @ApiBearerAuth()
@@ -32,34 +38,50 @@ export class NotesController {
 
   @Post()
   @ApiOperation({ summary: 'Создать заметку к файлу' })
-  create(@CurrentUser() user: User, @Body() dto: CreateNoteDto) {
-    return this.notesService.create(user.id, dto);
+  @ApiOkResponse({ type: NoteDto })
+  async create(
+    @CurrentUser() user: User,
+    @Body() dto: CreateNoteDto,
+  ): Promise<NoteDto> {
+    const note = await this.notesService.create(user.id, dto);
+    return NoteDto.fromEntity(note);
   }
 
   @Get('search')
   @ApiOperation({ summary: 'Поиск заметок по содержимому (полнотекстовый)' })
-  search(@CurrentUser() user: User, @Query('q') query: string) {
-    return this.notesService.search(user.id, query);
+  @ApiOkResponse({ type: [NoteDto] })
+  async search(
+    @CurrentUser() user: User,
+    @Query('q') query: string,
+  ): Promise<NoteDto[]> {
+    const notes = await this.notesService.search(user.id, query);
+    return notes.map((note) => {
+      return NoteDto.fromEntity(note);
+    });
   }
 
   @Get('file/:fileId')
   @ApiOperation({ summary: 'Получить заметки к файлу с пагинацией' })
-  findByFile(
+  @ApiOkResponse({ type: PaginatedNotesDto })
+  async findByFile(
     @Param('fileId', ParseUUIDPipe) fileId: string,
     @Query('page') page = DEFAULT_PAGE,
     @Query('limit') limit = DEFAULT_PAGE_LIMIT,
-  ) {
-    return this.notesService.findByFile(fileId, Number(page), Number(limit));
+  ): Promise<PaginatedNotesDto> {
+    const result = await this.notesService.findByFile(fileId, Number(page), Number(limit));
+    return PaginatedNotesDto.fromResult(result);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Обновить текст заметки' })
-  update(
+  @ApiOkResponse({ type: NoteDto })
+  async update(
     @CurrentUser() user: User,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateNoteDto,
-  ) {
-    return this.notesService.update(id, user.id, dto);
+  ): Promise<NoteDto> {
+    const note = await this.notesService.update(id, user.id, dto);
+    return NoteDto.fromEntity(note);
   }
 
   @Delete(':id')
