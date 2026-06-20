@@ -67,7 +67,6 @@ export class FilesService {
     const nextVersion = await this.resolveNextVersion(
       uploadedFile.originalname,
       resolvedFolderId,
-      uploadedById,
     );
 
     const fileId = crypto.randomUUID();
@@ -108,9 +107,17 @@ export class FilesService {
     }
   }
 
-  async findById(id: string, uploadedById: string): Promise<File> {
+  async findById(
+    id: string,
+    uploadedById: string,
+    isAdmin: boolean,
+  ): Promise<File> {
     const file = await this.fileRepository.findOne({
-      where: { id, uploadedById, isDeleted: false },
+      where: {
+        id,
+        ...(isAdmin ? {} : { uploadedById }),
+        isDeleted: false,
+      },
     });
     if (!file) {
       throw new NotFoundException('File not found');
@@ -121,6 +128,7 @@ export class FilesService {
   async getDownloadUrl(
     id: string,
     uploadedById: string,
+    isAdmin: boolean,
   ): Promise<{ url: string }> {
     const cacheKey = `${PRESIGNED_URL_CACHE_KEY_PREFIX}${id}`;
     const cachedUrl = await this.redis.get(cacheKey);
@@ -128,7 +136,7 @@ export class FilesService {
       return { url: cachedUrl };
     }
 
-    const file = await this.findById(id, uploadedById);
+    const file = await this.findById(id, uploadedById, isAdmin);
     const presignedUrl = await this.storageService.getPresignedUrl(
       file.s3Key,
       PRESIGNED_URL_TTL_SECONDS,
@@ -146,9 +154,10 @@ export class FilesService {
   async update(
     id: string,
     uploadedById: string,
+    isAdmin: boolean,
     dto: UpdateFileDto,
   ): Promise<File> {
-    const file = await this.findById(id, uploadedById);
+    const file = await this.findById(id, uploadedById, isAdmin);
 
     const updatedFields: Partial<File> = {};
     if (dto.name !== undefined) {
@@ -180,11 +189,15 @@ export class FilesService {
       }
     }
 
-    return this.findById(id, uploadedById);
+    return this.findById(id, uploadedById, isAdmin);
   }
 
-  async softDelete(id: string, uploadedById: string): Promise<void> {
-    const file = await this.findById(id, uploadedById);
+  async softDelete(
+    id: string,
+    uploadedById: string,
+    isAdmin: boolean,
+  ): Promise<void> {
+    const file = await this.findById(id, uploadedById, isAdmin);
     await this.fileRepository.update(id, { isDeleted: true });
     await this.invalidateDownloadUrlCache(id);
     if (file.folderId !== null) {
@@ -195,14 +208,17 @@ export class FilesService {
     }
   }
 
-  async getVersions(id: string, uploadedById: string): Promise<File[]> {
-    const currentFile = await this.findById(id, uploadedById);
+  async getVersions(
+    id: string,
+    uploadedById: string,
+    isAdmin: boolean,
+  ): Promise<File[]> {
+    const currentFile = await this.findById(id, uploadedById, isAdmin);
 
     return this.fileRepository.find({
       where: {
         name: currentFile.name,
         folderId: currentFile.folderId ?? IsNull(),
-        uploadedById: currentFile.uploadedById,
       },
       order: { version: 'DESC' },
     });
@@ -236,13 +252,11 @@ export class FilesService {
   private async resolveNextVersion(
     name: string,
     folderId: string | null,
-    uploadedById: string,
   ): Promise<number> {
     const latestVersion = await this.fileRepository.findOne({
       where: {
         name,
         folderId: folderId ?? IsNull(),
-        uploadedById,
         isDeleted: false,
       },
       order: { version: 'DESC' },

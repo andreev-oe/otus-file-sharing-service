@@ -183,7 +183,7 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
           },
         })
         .setParameter(SIZE_TO_SUBTRACT_PARAM, sizeToSubtract)
-        .where(':folderPath LIKE CONCAT(path, :suffix)', {
+        .where('CAST(:folderPath AS text) LIKE CONCAT(path, :suffix)', {
           folderPath: folder.path,
           suffix: '/%',
         })
@@ -225,7 +225,7 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
       })
       .setParameter(SIZE_DELTA_PARAM, event.sizeDelta)
       .where('id = :folderId', { folderId: event.folderId })
-      .orWhere(':folderPath LIKE CONCAT(path, :suffix)', {
+      .orWhere('CAST(:folderPath AS text) LIKE CONCAT(path, :suffix)', {
         folderPath: folder.path,
         suffix: '/%',
       })

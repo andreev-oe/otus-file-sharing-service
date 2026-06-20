@@ -18,6 +18,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
   ApiConsumes,
+  ApiOkResponse,
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
@@ -30,6 +31,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { FilesService } from './files.service';
 import { UpdateFileDto } from './dto/update-file.dto';
+import { FileDto } from './dto/file.dto';
 
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
 
@@ -51,41 +53,59 @@ export class FilesController {
       limits: { fileSize: MAX_FILE_SIZE_BYTES },
     }),
   )
-  upload(
+  @ApiOkResponse({ type: FileDto })
+  async upload(
     @CurrentUser() user: User,
     @UploadedFile() uploadedFile: Express.Multer.File,
     @Query('folderId') folderId?: string,
-  ) {
-    return this.filesService.upload(user.id, uploadedFile, folderId);
+  ): Promise<FileDto> {
+    const file = await this.filesService.upload(user.id, uploadedFile, folderId);
+    return FileDto.fromEntity(file);
   }
 
   @Get()
   @ApiOperation({
     summary: 'Список файлов текущего пользователя (опционально по папке)',
   })
-  findByFolder(
+  @ApiOkResponse({ type: [FileDto] })
+  async findByFolder(
     @CurrentUser() user: User,
     @Query('folderId') folderId?: string,
-  ) {
-    return this.filesService.findByFolder(
+  ): Promise<FileDto[]> {
+    const files = await this.filesService.findByFolder(
       folderId ?? null,
       user.id,
       user.role === UserRole.ADMIN,
     );
+    return files.map((file) => {
+      return FileDto.fromEntity(file);
+    });
   }
 
   @Get('search')
   @ApiOperation({ summary: 'Поиск файлов по имени' })
-  search(@CurrentUser() user: User, @Query('q') query: string) {
-    return this.filesService.search(user.id, query);
+  @ApiOkResponse({ type: [FileDto] })
+  async search(
+    @CurrentUser() user: User,
+    @Query('q') query: string,
+  ): Promise<FileDto[]> {
+    const files = await this.filesService.search(user.id, query);
+    return files.map((file) => {
+      return FileDto.fromEntity(file);
+    });
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Получить метаданные файла по ID' })
+  @ApiOkResponse({ type: FileDto })
   @UseGuards(PermissionsGuard)
   @RequirePermission(ResourceType.FILE, PermissionLevel.VIEW)
-  findOne(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) {
-    return this.filesService.findById(id, user.id);
+  async findOne(
+    @CurrentUser() user: User,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<FileDto> {
+    const file = await this.filesService.findById(id, user.id, user.role === UserRole.ADMIN);
+    return FileDto.fromEntity(file);
   }
 
   @Get(':id/download')
@@ -96,18 +116,30 @@ export class FilesController {
     @CurrentUser() user: User,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.filesService.getDownloadUrl(id, user.id);
+    return this.filesService.getDownloadUrl(
+      id,
+      user.id,
+      user.role === UserRole.ADMIN,
+    );
   }
 
   @Get(':id/versions')
   @ApiOperation({ summary: 'Получить историю версий файла' })
+  @ApiOkResponse({ type: [FileDto] })
   @UseGuards(PermissionsGuard)
   @RequirePermission(ResourceType.FILE, PermissionLevel.VIEW)
-  getVersions(
+  async getVersions(
     @CurrentUser() user: User,
     @Param('id', ParseUUIDPipe) id: string,
-  ) {
-    return this.filesService.getVersions(id, user.id);
+  ): Promise<FileDto[]> {
+    const files = await this.filesService.getVersions(
+      id,
+      user.id,
+      user.role === UserRole.ADMIN,
+    );
+    return files.map((file) => {
+      return FileDto.fromEntity(file);
+    });
   }
 
   @Patch(':id')
@@ -116,12 +148,14 @@ export class FilesController {
   })
   @UseGuards(PermissionsGuard)
   @RequirePermission(ResourceType.FILE, PermissionLevel.EDIT)
-  update(
+  @ApiOkResponse({ type: FileDto })
+  async update(
     @CurrentUser() user: User,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateFileDto,
-  ) {
-    return this.filesService.update(id, user.id, dto);
+  ): Promise<FileDto> {
+    const file = await this.filesService.update(id, user.id, user.role === UserRole.ADMIN, dto);
+    return FileDto.fromEntity(file);
   }
 
   @Delete(':id')
@@ -133,6 +167,10 @@ export class FilesController {
     @CurrentUser() user: User,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.filesService.softDelete(id, user.id);
+    return this.filesService.softDelete(
+      id,
+      user.id,
+      user.role === UserRole.ADMIN,
+    );
   }
 }

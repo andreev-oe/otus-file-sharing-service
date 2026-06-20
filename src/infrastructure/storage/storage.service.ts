@@ -14,6 +14,8 @@ export class StorageService {
   private readonly client: S3Client;
   private readonly bucket: string;
 
+  private readonly publicClient: S3Client;
+
   constructor(
     @Inject(s3Config.KEY)
     private readonly s3Configuration: ConfigType<typeof s3Config>,
@@ -21,6 +23,15 @@ export class StorageService {
     this.client = new S3Client({
       region: s3Configuration.region,
       endpoint: s3Configuration.endpoint,
+      credentials: {
+        accessKeyId: s3Configuration.accessKeyId,
+        secretAccessKey: s3Configuration.secretAccessKey,
+      },
+      forcePathStyle: true,
+    });
+    this.publicClient = new S3Client({
+      region: s3Configuration.region,
+      endpoint: s3Configuration.publicEndpoint,
       credentials: {
         accessKeyId: s3Configuration.accessKeyId,
         secretAccessKey: s3Configuration.secretAccessKey,
@@ -48,7 +59,7 @@ export class StorageService {
 
   async getPresignedUrl(key: string, ttlSeconds: number): Promise<string> {
     return getSignedUrl(
-      this.client,
+      this.publicClient,
       new GetObjectCommand({ Bucket: this.bucket, Key: key }),
       { expiresIn: ttlSeconds },
     );
