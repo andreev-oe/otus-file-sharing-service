@@ -25,6 +25,7 @@ import { User } from '../users/entities/user.entity';
 import { ShareLinksService } from './share-links.service';
 import { CreateShareLinkDto } from './dto/create-share-link.dto';
 import { ShareLinkDto } from './dto/share-link.dto';
+import { DownloadUrlDto } from '../files/dto/download-url.dto';
 
 @ApiTags('ShareLinks')
 @Controller('share-links')
@@ -58,6 +59,18 @@ export class ShareLinksController {
   ): Promise<ShareLinkDto> {
     const link = await this.shareLinksService.findByToken(token, password);
     return ShareLinkDto.fromEntity(link);
+  }
+
+  @Get(':token/download')
+  @ApiOperation({
+    summary: 'Получить presigned URL для скачивания файла по публичной ссылке',
+  })
+  @ApiOkResponse({ type: DownloadUrlDto })
+  getDownloadUrl(
+    @Param('token', ParseUUIDPipe) token: string,
+    @Query('password') password?: string,
+  ): Promise<DownloadUrlDto> {
+    return this.shareLinksService.getDownloadUrl(token, password);
   }
 
   @Delete(':id')

@@ -10,17 +10,20 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { isPostgresFkViolation } from '../../common/constants/postgres-error-codes';
+import { StorageService } from '../../infrastructure/storage/storage.service';
 import { ShareLink } from './entities/share-link.entity';
 import { CreateShareLinkDto } from './dto/create-share-link.dto';
 
 const BCRYPT_SALT_ROUNDS = 10;
 const MILLISECONDS_PER_SECOND = 1000;
+const PRESIGNED_URL_TTL_SECONDS = 3600;
 
 @Injectable()
 export class ShareLinksService {
   constructor(
     @InjectRepository(ShareLink)
     private readonly shareLinkRepository: Repository<ShareLink>,
+    private readonly storageService: StorageService,
   ) {}
 
   async create(
@@ -54,6 +57,33 @@ export class ShareLinksService {
   }
 
   async findByToken(token: string, password?: string): Promise<ShareLink> {
+    return this.validateLink(token, password);
+  }
+
+  async getDownloadUrl(token: string, password?: string): Promise<{ url: string }> {
+    const link = await this.validateLink(token, password);
+    await this.shareLinkRepository.increment({ token }, 'downloadCount', 1);
+    const url = await this.storageService.getPresignedUrl(
+      link.file.s3Key,
+      PRESIGNED_URL_TTL_SECONDS,
+    );
+    return { url };
+  }
+
+  async deactivate(id: string, userId: string): Promise<void> {
+    const link = await this.shareLinkRepository.findOne({
+      where: { token: id },
+    });
+    if (!link) {
+      throw new NotFoundException('Share link not found');
+    }
+    if (link.createdById !== userId) {
+      throw new ForbiddenException('You did not create this share link');
+    }
+    await this.shareLinkRepository.update(id, { isActive: false });
+  }
+
+  private async validateLink(token: string, password?: string): Promise<ShareLink> {
     const link = await this.shareLinkRepository.findOne({
       where: { token },
       relations: { file: true },
@@ -81,22 +111,6 @@ export class ShareLinksService {
       }
     }
 
-    await this.shareLinkRepository.increment({ token }, 'downloadCount', 1);
-    link.downloadCount += 1;
-
     return link;
-  }
-
-  async deactivate(id: string, userId: string): Promise<void> {
-    const link = await this.shareLinkRepository.findOne({
-      where: { token: id },
-    });
-    if (!link) {
-      throw new NotFoundException('Share link not found');
-    }
-    if (link.createdById !== userId) {
-      throw new ForbiddenException('You did not create this share link');
-    }
-    await this.shareLinkRepository.update(id, { isActive: false });
   }
 }
