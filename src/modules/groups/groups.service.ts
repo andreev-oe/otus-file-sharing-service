@@ -133,6 +133,18 @@ export class GroupsService {
     await this.groupRepository.update(groupId, { ownerId: newOwnerId });
   }
 
+  async delete(groupId: string, requesterId: string, requesterRole: UserRole): Promise<void> {
+    const group = await this.groupRepository.findOne({ where: { id: groupId } });
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+    if (requesterRole !== UserRole.ADMIN && group.ownerId !== requesterId) {
+      throw new ForbiddenException('Only the group owner can delete the group');
+    }
+    await this.groupMemberRepository.delete({ groupId });
+    await this.groupRepository.delete(groupId);
+  }
+
   async getMembers(groupId: string): Promise<GroupMember[]> {
     return this.groupMemberRepository.find({
       where: { groupId },

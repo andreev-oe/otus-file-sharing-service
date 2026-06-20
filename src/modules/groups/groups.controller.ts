@@ -69,6 +69,17 @@ export class GroupsController {
     return GroupMemberDto.fromEntity(member);
   }
 
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Удалить группу (только owner или системный admin)' })
+  @ApiNoContentResponse({ description: 'Группа удалена' })
+  delete(
+    @CurrentUser() user: User,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<void> {
+    return this.groupsService.delete(id, user.id, user.role);
+  }
+
   @Delete(':id/members/:userId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Удалить участника из группы' })
