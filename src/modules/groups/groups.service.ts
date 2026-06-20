@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { GroupMemberRole } from '../../common/enums';
+import { GroupMemberRole, UserRole } from '../../common/enums';
 import { Group } from './entities/group.entity';
 import { GroupMember } from './entities/group-member.entity';
 import { CreateGroupDto } from './dto/create-group.dto';
@@ -22,6 +22,16 @@ export class GroupsService {
     @InjectRepository(GroupMember)
     private readonly groupMemberRepository: Repository<GroupMember>,
   ) {}
+
+  async findAll(requesterId: string, requesterRole: UserRole): Promise<Group[]> {
+    if (requesterRole === UserRole.ADMIN) {
+      return this.groupRepository.find({ order: { createdAt: 'DESC' } });
+    }
+    return this.groupRepository.find({
+      where: { ownerId: requesterId },
+      order: { createdAt: 'DESC' },
+    });
+  }
 
   async create(ownerId: string, dto: CreateGroupDto): Promise<Group> {
     const group = this.groupRepository.create({

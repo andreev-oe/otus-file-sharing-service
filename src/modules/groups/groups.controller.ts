@@ -27,6 +27,12 @@ import { TransferOwnershipDto } from './dto/transfer-ownership.dto';
 export class GroupsController {
   constructor(private readonly groupsService: GroupsService) {}
 
+  @Get()
+  @ApiOperation({ summary: 'Получить список групп (все — для admin, свои — для остальных)' })
+  findAll(@CurrentUser() user: User) {
+    return this.groupsService.findAll(user.id, user.role);
+  }
+
   @Post()
   @ApiOperation({ summary: 'Создать новую группу пользователей' })
   create(@CurrentUser() user: User, @Body() dto: CreateGroupDto) {
