@@ -11,7 +11,14 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
@@ -19,6 +26,8 @@ import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { TransferOwnershipDto } from './dto/transfer-ownership.dto';
+import { GroupDto } from './dto/group.dto';
+import { GroupMemberDto } from './dto/group-member.dto';
 
 @ApiTags('Groups')
 @ApiBearerAuth()
@@ -29,51 +38,70 @@ export class GroupsController {
 
   @Get()
   @ApiOperation({ summary: 'Получить список групп (все — для admin, свои — для остальных)' })
-  findAll(@CurrentUser() user: User) {
-    return this.groupsService.findAll(user.id, user.role);
+  @ApiOkResponse({ type: [GroupDto] })
+  async findAll(@CurrentUser() user: User): Promise<GroupDto[]> {
+    const groups = await this.groupsService.findAll(user.id, user.role);
+    return groups.map((group) => {
+      return GroupDto.fromEntity(group);
+    });
   }
 
   @Post()
   @ApiOperation({ summary: 'Создать новую группу пользователей' })
-  create(@CurrentUser() user: User, @Body() dto: CreateGroupDto) {
-    return this.groupsService.create(user.id, dto);
+  @ApiCreatedResponse({ type: GroupDto })
+  async create(
+    @CurrentUser() user: User,
+    @Body() dto: CreateGroupDto,
+  ): Promise<GroupDto> {
+    const group = await this.groupsService.create(user.id, dto);
+    return GroupDto.fromEntity(group);
   }
 
   @Post(':id/members')
   @ApiOperation({ summary: 'Добавить участника в группу с указанием роли' })
-  addMember(
+  @ApiCreatedResponse({ type: GroupMemberDto })
+  async addMember(
     @CurrentUser() user: User,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AddMemberDto,
-  ) {
-    return this.groupsService.addMember(id, user.id, dto);
+  ): Promise<GroupMemberDto> {
+    const member = await this.groupsService.addMember(id, user.id, dto);
+    return GroupMemberDto.fromEntity(member);
   }
 
   @Delete(':id/members/:userId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Удалить участника из группы' })
+  @ApiNoContentResponse({ description: 'Участник удалён' })
   removeMember(
     @CurrentUser() user: User,
     @Param('id', ParseUUIDPipe) id: string,
     @Param('userId', ParseUUIDPipe) userId: string,
-  ) {
+  ): Promise<void> {
     return this.groupsService.removeMember(id, user.id, userId);
   }
 
   @Patch(':id/transfer-ownership')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Передать роль owner другому участнику группы' })
+  @ApiNoContentResponse({ description: 'Владелец изменён' })
   transferOwnership(
     @CurrentUser() user: User,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: TransferOwnershipDto,
-  ) {
+  ): Promise<void> {
     return this.groupsService.transferOwnership(id, user.id, dto.newOwnerId);
   }
 
   @Get(':id/members')
   @ApiOperation({ summary: 'Получить список участников группы' })
-  getMembers(@Param('id', ParseUUIDPipe) id: string) {
-    return this.groupsService.getMembers(id);
+  @ApiOkResponse({ type: [GroupMemberDto] })
+  async getMembers(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<GroupMemberDto[]> {
+    const members = await this.groupsService.getMembers(id);
+    return members.map((member) => {
+      return GroupMemberDto.fromEntity(member);
+    });
   }
 }

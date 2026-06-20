@@ -10,13 +10,20 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { UserRole, SubjectType } from '../../common/enums';
 import { PermissionsService } from './permissions.service';
 import { CreatePermissionDto } from './dto/create-permission.dto';
+import { PermissionDto } from './dto/permission.dto';
 
 @ApiTags('Permissions')
 @ApiBearerAuth()
@@ -29,7 +36,11 @@ export class PermissionsController {
   @ApiOperation({
     summary: 'Выдать права доступа пользователю, группе или всем на файл/папку',
   })
-  grant(@CurrentUser() user: User, @Body() dto: CreatePermissionDto) {
+  @ApiCreatedResponse({ type: PermissionDto })
+  async grant(
+    @CurrentUser() user: User,
+    @Body() dto: CreatePermissionDto,
+  ): Promise<PermissionDto> {
     if (
       dto.subjectType === SubjectType.EVERYONE &&
       user.role !== UserRole.ADMIN
@@ -38,13 +49,15 @@ export class PermissionsController {
         'Только системный администратор может выдавать права всем пользователям',
       );
     }
-    return this.permissionsService.grant(dto);
+    const permission = await this.permissionsService.grant(dto);
+    return PermissionDto.fromEntity(permission);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Отозвать ранее выданные права доступа' })
-  revoke(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiNoContentResponse({ description: 'Права отозваны' })
+  revoke(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.permissionsService.revoke(id);
   }
 }

@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -87,7 +88,8 @@ export class NotesController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Удалить заметку' })
-  remove(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) {
+  @ApiNoContentResponse({ description: 'Заметка удалена' })
+  remove(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.notesService.remove(id, user.id);
   }
 }

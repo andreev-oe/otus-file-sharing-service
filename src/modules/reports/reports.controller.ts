@@ -1,10 +1,18 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { ReportsService } from './reports.service';
 import { CreateReportDto } from './dto/create-report.dto';
+import { ReportJobDto, ReportStatusDto } from './dto/report-job.dto';
+import { DownloadUrlDto } from '../files/dto/download-url.dto';
 
 @ApiTags('Reports')
 @ApiBearerAuth()
@@ -17,13 +25,18 @@ export class ReportsController {
   @ApiOperation({
     summary: 'Поставить задачу генерации отчёта в очередь (CSV или PDF)',
   })
-  enqueue(@CurrentUser() user: User, @Body() dto: CreateReportDto) {
+  @ApiCreatedResponse({ type: ReportJobDto })
+  enqueue(
+    @CurrentUser() user: User,
+    @Body() dto: CreateReportDto,
+  ): Promise<ReportJobDto> {
     return this.reportsService.enqueue(user.id, dto);
   }
 
   @Get(':jobId/status')
   @ApiOperation({ summary: 'Получить статус задачи генерации отчёта' })
-  getStatus(@Param('jobId') jobId: string) {
+  @ApiOkResponse({ type: ReportStatusDto })
+  getStatus(@Param('jobId') jobId: string): Promise<ReportStatusDto> {
     return this.reportsService.getStatus(jobId);
   }
 
@@ -31,7 +44,8 @@ export class ReportsController {
   @ApiOperation({
     summary: 'Получить presigned URL для скачивания готового отчёта',
   })
-  getDownloadUrl(@Param('jobId') jobId: string) {
+  @ApiOkResponse({ type: DownloadUrlDto })
+  getDownloadUrl(@Param('jobId') jobId: string): Promise<DownloadUrlDto> {
     return this.reportsService.getDownloadUrl(jobId);
   }
 }

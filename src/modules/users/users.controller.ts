@@ -24,6 +24,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserPublicDto } from './dto/user-public.dto';
+import { UserProfileDto } from './dto/user-profile.dto';
 import { User } from './entities/user.entity';
 
 const AVATAR_MAX_SIZE_BYTES = 5 * 1024 * 1024;
@@ -53,17 +54,20 @@ export class UsersController {
 
   @Get('me')
   @ApiOperation({ summary: 'Получить профиль текущего пользователя' })
-  getProfile(@CurrentUser() user: User): User {
-    return user;
+  @ApiOkResponse({ type: UserProfileDto })
+  getProfile(@CurrentUser() user: User): UserProfileDto {
+    return UserProfileDto.fromEntity(user);
   }
 
   @Patch('me')
   @ApiOperation({ summary: 'Обновить имя и биографию текущего пользователя' })
-  updateProfile(
+  @ApiOkResponse({ type: UserProfileDto })
+  async updateProfile(
     @CurrentUser() user: User,
     @Body() dto: UpdateUserDto,
-  ): Promise<User> {
-    return this.usersService.update(user.id, dto);
+  ): Promise<UserProfileDto> {
+    const updated = await this.usersService.update(user.id, dto);
+    return UserProfileDto.fromEntity(updated);
   }
 
   @Post('me/avatar')
@@ -75,11 +79,12 @@ export class UsersController {
       properties: { file: { type: 'string', format: 'binary' } },
     },
   })
+  @ApiOkResponse({ type: UserProfileDto })
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
-  uploadAvatar(
+  async uploadAvatar(
     @CurrentUser() user: User,
     @UploadedFile() file: Express.Multer.File,
-  ): Promise<User> {
+  ): Promise<UserProfileDto> {
     if (!file) {
       throw new BadRequestException('File is required');
     }
@@ -91,6 +96,7 @@ export class UsersController {
     if (file.size > AVATAR_MAX_SIZE_BYTES) {
       throw new BadRequestException('File size must not exceed 5 MB');
     }
-    return this.usersService.uploadAvatar(user.id, file);
+    const updated = await this.usersService.uploadAvatar(user.id, file);
+    return UserProfileDto.fromEntity(updated);
   }
 }

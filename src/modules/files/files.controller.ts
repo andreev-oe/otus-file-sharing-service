@@ -18,6 +18,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
   ApiConsumes,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -32,6 +34,7 @@ import { User } from '../users/entities/user.entity';
 import { FilesService } from './files.service';
 import { UpdateFileDto } from './dto/update-file.dto';
 import { FileDto } from './dto/file.dto';
+import { DownloadUrlDto } from './dto/download-url.dto';
 
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
 
@@ -53,7 +56,7 @@ export class FilesController {
       limits: { fileSize: MAX_FILE_SIZE_BYTES },
     }),
   )
-  @ApiOkResponse({ type: FileDto })
+  @ApiCreatedResponse({ type: FileDto })
   async upload(
     @CurrentUser() user: User,
     @UploadedFile() uploadedFile: Express.Multer.File,
@@ -110,12 +113,13 @@ export class FilesController {
 
   @Get(':id/download')
   @ApiOperation({ summary: 'Получить presigned URL для скачивания файла' })
+  @ApiOkResponse({ type: DownloadUrlDto })
   @UseGuards(PermissionsGuard)
   @RequirePermission(ResourceType.FILE, PermissionLevel.VIEW)
   getDownloadUrl(
     @CurrentUser() user: User,
     @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  ): Promise<DownloadUrlDto> {
     return this.filesService.getDownloadUrl(
       id,
       user.id,
@@ -146,9 +150,9 @@ export class FilesController {
   @ApiOperation({
     summary: 'Переименовать файл или переместить в другую папку',
   })
+  @ApiOkResponse({ type: FileDto })
   @UseGuards(PermissionsGuard)
   @RequirePermission(ResourceType.FILE, PermissionLevel.EDIT)
-  @ApiOkResponse({ type: FileDto })
   async update(
     @CurrentUser() user: User,
     @Param('id', ParseUUIDPipe) id: string,
@@ -161,12 +165,13 @@ export class FilesController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Мягкое удаление файла (помечается как удалённый)' })
+  @ApiNoContentResponse({ description: 'Файл удалён' })
   @UseGuards(PermissionsGuard)
   @RequirePermission(ResourceType.FILE, PermissionLevel.MANAGE)
   softDelete(
     @CurrentUser() user: User,
     @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  ): Promise<void> {
     return this.filesService.softDelete(
       id,
       user.id,
