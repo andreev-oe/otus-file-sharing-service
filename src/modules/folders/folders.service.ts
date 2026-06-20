@@ -14,6 +14,7 @@ import { REDIS } from '../../infrastructure/cache/redis.provider';
 import { EventBus } from '../../infrastructure/events/event-bus';
 import type { PermissionChangedOnFolderEvent } from '../../infrastructure/events/permission-changed-on-folder.event';
 import type { FileStorageChangedEvent } from '../../infrastructure/events/file-storage-changed.event';
+import { UserRole } from '../../common/enums';
 import { Folder } from './entities/folder.entity';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { UpdateFolderDto } from './dto/update-folder.dto';
@@ -22,6 +23,7 @@ import { FolderTreeNodeDto } from './dto/folder-tree-node.dto';
 const MAX_FOLDER_DEPTH = 10;
 const FOLDER_TREE_CACHE_TTL_SECONDS = 600;
 const FOLDER_TREE_CACHE_KEY_PREFIX = 'folder:tree:';
+const ADMIN_TREE_CACHE_KEY = 'folder:tree:admin';
 const TOTAL_SIZE_COLUMN = 'total_size';
 const SIZE_TO_SUBTRACT_PARAM = 'sizeToSubtract';
 const SIZE_DELTA_PARAM = 'sizeDelta';
@@ -85,8 +87,10 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
     return saved;
   }
 
-  async getTree(ownerId: string): Promise<FolderTreeNodeDto[]> {
-    const cacheKey = `${FOLDER_TREE_CACHE_KEY_PREFIX}${ownerId}`;
+  async getTree(ownerId: string, role: UserRole): Promise<FolderTreeNodeDto[]> {
+    const isAdmin = role === UserRole.ADMIN;
+    const cacheKey = isAdmin ? ADMIN_TREE_CACHE_KEY : `${FOLDER_TREE_CACHE_KEY_PREFIX}${ownerId}`;
+
     const cached = await this.redis.get(cacheKey);
     if (cached !== null) {
       const tree: FolderTreeNodeDto[] = JSON.parse(cached);
@@ -94,7 +98,7 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
     }
 
     const allFolders = await this.folderRepository.find({
-      where: { ownerId, isDeleted: false },
+      where: isAdmin ? { isDeleted: false } : { ownerId, isDeleted: false },
       order: { name: 'ASC' },
     });
 
@@ -282,7 +286,7 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async invalidateTreeCache(ownerId: string): Promise<void> {
-    await this.redis.del(`${FOLDER_TREE_CACHE_KEY_PREFIX}${ownerId}`);
+    await this.redis.del(`${FOLDER_TREE_CACHE_KEY_PREFIX}${ownerId}`, ADMIN_TREE_CACHE_KEY);
   }
 
   private buildTree(allFolders: Folder[], parentId: string | null): FolderTreeNodeDto[] {

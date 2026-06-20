@@ -21,7 +21,9 @@
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/data-source.ts",
     "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/data-source.ts",
     "seed": "ts-node --transpile-only src/seed.ts",
-    "seed:docker": "docker compose exec app node dist/seed.js"
+    "seed:docker": "docker compose exec app node dist/seed.js",
+    "docker:up": "docker compose up -d",
+    "docker:update": "docker compose up -d --build"
   },
   "engines": {
     "npm": ">=10.0.0",

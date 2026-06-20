@@ -36,9 +36,9 @@ export class FoldersController {
   }
 
   @Get('tree')
-  @ApiOperation({ summary: 'Получить дерево всех папок пользователя' })
+  @ApiOperation({ summary: 'Получить дерево всех папок пользователя (admin видит все папки системы)' })
   getTree(@CurrentUser() user: User) {
-    return this.foldersService.getTree(user.id);
+    return this.foldersService.getTree(user.id, user.role);
   }
 
   @Get('search')
