@@ -24,13 +24,51 @@ export class GroupsService {
   ) {}
 
   async findAll(requesterId: string, requesterRole: UserRole): Promise<Group[]> {
-    if (requesterRole === UserRole.ADMIN) {
-      return this.groupRepository.find({ order: { createdAt: 'DESC' } });
+    const builder = this.groupRepository
+      .createQueryBuilder('group')
+      .leftJoinAndSelect('group.owner', 'owner')
+      .addSelect((subQuery) => {
+        return subQuery
+          .select('COUNT(member.id)')
+          .from(GroupMember, 'member')
+          .where('member.groupId = group.id');
+      }, 'memberCount')
+      .orderBy('group.createdAt', 'DESC');
+
+    if (requesterRole !== UserRole.ADMIN) {
+      builder.where('group.ownerId = :requesterId', { requesterId });
     }
-    return this.groupRepository.find({
-      where: { ownerId: requesterId },
-      order: { createdAt: 'DESC' },
+
+    const { entities, raw } = await builder.getRawAndEntities();
+    entities.forEach((group, index) => {
+      group.memberCount = Number(raw[index]?.memberCount) || 0;
     });
+    return entities;
+  }
+
+  async findById(groupId: string, requesterId: string, requesterRole: UserRole): Promise<Group> {
+    const builder = this.groupRepository
+      .createQueryBuilder('group')
+      .leftJoinAndSelect('group.owner', 'owner')
+      .addSelect((subQuery) => {
+        return subQuery
+          .select('COUNT(member.id)')
+          .from(GroupMember, 'member')
+          .where('member.groupId = group.id');
+      }, 'memberCount')
+      .where('group.id = :groupId', { groupId });
+
+    if (requesterRole !== UserRole.ADMIN) {
+      builder.andWhere('group.ownerId = :requesterId', { requesterId });
+    }
+
+    const { entities, raw } = await builder.getRawAndEntities();
+    const group = entities[0];
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+    group.memberCount = Number(raw[0]?.memberCount) || 0;
+    return group;
   }
 
   async create(ownerId: string, dto: CreateGroupDto): Promise<Group> {

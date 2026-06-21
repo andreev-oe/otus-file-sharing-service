@@ -57,6 +57,17 @@ export class GroupsController {
     return GroupDto.fromEntity(group);
   }
 
+  @Get(':id')
+  @ApiOperation({ summary: 'Получить группу по ID' })
+  @ApiOkResponse({ type: GroupDto })
+  async findOne(
+    @CurrentUser() user: User,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<GroupDto> {
+    const group = await this.groupsService.findById(id, user.id, user.role);
+    return GroupDto.fromEntity(group);
+  }
+
   @Post(':id/members')
   @ApiOperation({ summary: 'Добавить участника в группу с указанием роли' })
   @ApiCreatedResponse({ type: GroupMemberDto })

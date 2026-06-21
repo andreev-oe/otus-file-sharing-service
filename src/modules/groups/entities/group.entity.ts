@@ -3,10 +3,12 @@ import {
   CreateDateColumn,
   Entity,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { GroupMember } from './group-member.entity';
 
 @Entity('groups')
 export class Group {
@@ -22,10 +24,13 @@ export class Group {
   @Column()
   ownerId: string;
 
-  @ManyToOne(() => {
-    return User;
-  })
+  @ManyToOne(() => User)
   owner: User;
+
+  @OneToMany(() => GroupMember, (member) => member.group)
+  members: GroupMember[];
+
+  memberCount?: number;
 
   @CreateDateColumn()
   createdAt: Date;
