@@ -13,10 +13,12 @@ import {
   ReportJobResult,
 } from '../../jobs/reports.processor';
 import { CreateReportDto } from './dto/create-report.dto';
+import { ReportJobDto, ReportStatusDto } from './dto/report-job.dto';
 
 const REPORT_PRESIGNED_URL_TTL_SECONDS = 3600;
 const REPORT_JOB_NAME = 'generate';
 const JOB_STATUS_COMPLETED = 'completed';
+const JOB_STATUS_WAITING = 'waiting';
 
 @Injectable()
 export class ReportsService {
@@ -26,10 +28,7 @@ export class ReportsService {
     private readonly storageService: StorageService,
   ) {}
 
-  async enqueue(
-    userId: string,
-    dto: CreateReportDto,
-  ): Promise<{ jobId: string }> {
+  async enqueue(userId: string, dto: CreateReportDto): Promise<ReportJobDto> {
     const jobData: ReportJobData = {
       userId,
       type: dto.type,
@@ -42,19 +41,30 @@ export class ReportsService {
     if (!job.id) {
       throw new InternalServerErrorException('Queue failed to assign job ID');
     }
-    return { jobId: job.id };
+    return {
+      jobId: job.id,
+      createdAt: new Date(job.timestamp),
+      status: JOB_STATUS_WAITING,
+      requestedById: userId,
+      format: dto.format,
+    };
   }
 
-  async getStatus(
-    jobId: string,
-  ): Promise<{ status: string; progress: number }> {
+  async getStatus(jobId: string): Promise<ReportStatusDto> {
     const job = await this.reportsQueue.getJob(jobId);
     if (!job) {
       throw new NotFoundException('Job not found');
     }
     const status = await job.getState();
     const progress = typeof job.progress === 'number' ? job.progress : 0;
-    return { status, progress };
+    return {
+      jobId,
+      status,
+      progress,
+      createdAt: new Date(job.timestamp),
+      requestedById: job.data.userId,
+      format: job.data.format,
+    };
   }
 
   async getDownloadUrl(jobId: string): Promise<{ url: string }> {

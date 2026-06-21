@@ -92,7 +92,7 @@ export class FilesController {
     @CurrentUser() user: User,
     @Query('q') query: string,
   ): Promise<FileDto[]> {
-    const files = await this.filesService.search(user.id, query);
+    const files = await this.filesService.search(user.id, query, user.role === UserRole.ADMIN);
     return files.map((file) => {
       return FileDto.fromEntity(file);
     });

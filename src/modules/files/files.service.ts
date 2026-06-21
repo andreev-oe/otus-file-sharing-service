@@ -229,9 +229,13 @@ export class FilesService {
     uploadedById: string,
     isAdmin: boolean,
   ): Promise<File[]> {
+    const folderFilter = isAdmin && folderId === null
+      ? {}
+      : { folderId: folderId ?? IsNull() };
+
     return this.fileRepository.find({
       where: {
-        folderId: folderId ?? IsNull(),
+        ...folderFilter,
         ...(isAdmin ? {} : { uploadedById }),
         isDeleted: false,
       },
@@ -239,14 +243,22 @@ export class FilesService {
     });
   }
 
-  async search(uploadedById: string, query: string): Promise<File[]> {
-    return this.fileRepository
+  async search(
+    uploadedById: string,
+    query: string,
+    isAdmin: boolean,
+  ): Promise<File[]> {
+    const builder = this.fileRepository
       .createQueryBuilder('file')
-      .where('file.uploadedById = :uploadedById', { uploadedById })
-      .andWhere('file.isDeleted = false')
+      .where('file.isDeleted = false')
       .andWhere('file.name ILIKE :query', { query: `%${query}%` })
-      .orderBy('file.name', 'ASC')
-      .getMany();
+      .orderBy('file.name', 'ASC');
+
+    if (!isAdmin) {
+      builder.andWhere('file.uploadedById = :uploadedById', { uploadedById });
+    }
+
+    return builder.getMany();
   }
 
   private async resolveNextVersion(
