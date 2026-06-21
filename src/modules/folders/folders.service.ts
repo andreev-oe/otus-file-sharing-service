@@ -10,7 +10,7 @@ import {
 import type Redis from 'ioredis';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Subscription } from 'rxjs';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { REDIS } from '../../infrastructure/cache/redis.provider';
 import { EventBus } from '../../infrastructure/events/event-bus';
 import type { PermissionChangedOnFolderEvent } from '../../infrastructure/events/permission-changed-on-folder.event';
@@ -126,6 +126,20 @@ export class FoldersService implements OnModuleInit, OnModuleDestroy {
       FOLDER_TREE_CACHE_TTL_SECONDS,
     );
     return tree;
+  }
+
+  async findByIds(ids: string[], ownerId: string, isAdmin: boolean): Promise<Folder[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    return this.folderRepository.find({
+      where: {
+        id: In(ids),
+        ...(isAdmin ? {} : { ownerId }),
+        isDeleted: false,
+      },
+      select: { id: true, name: true },
+    });
   }
 
   async getChildFolders(folderId: string, ownerId: string): Promise<Folder[]> {

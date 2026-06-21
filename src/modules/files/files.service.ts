@@ -6,7 +6,7 @@ import {
   UnsupportedMediaTypeException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import type Redis from 'ioredis';
 import { REDIS } from '../../infrastructure/cache/redis.provider';
 import { StorageService } from '../../infrastructure/storage/storage.service';
@@ -116,6 +116,20 @@ export class FilesService {
       await this.storageService.delete(s3Key);
       throw error;
     }
+  }
+
+  async findByIds(ids: string[], uploadedById: string, isAdmin: boolean): Promise<File[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    return this.fileRepository.find({
+      where: {
+        id: In(ids),
+        ...(isAdmin ? {} : { uploadedById }),
+        isDeleted: false,
+      },
+      select: { id: true, name: true },
+    });
   }
 
   async findById(

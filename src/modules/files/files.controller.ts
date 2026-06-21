@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -34,7 +35,9 @@ import { User } from '../users/entities/user.entity';
 import { FilesService } from './files.service';
 import { UpdateFileDto } from './dto/update-file.dto';
 import { FileDto } from './dto/file.dto';
+import { FileNameDto } from './dto/file-name.dto';
 import { DownloadUrlDto } from './dto/download-url.dto';
+import { MAX_BULK_IDS } from '../../common/constants/bulk-query';
 
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
 
@@ -64,6 +67,26 @@ export class FilesController {
   ): Promise<FileDto> {
     const file = await this.filesService.upload(user.id, uploadedFile, folderId);
     return FileDto.fromEntity(file);
+  }
+
+  @Get('bulk')
+  @ApiOperation({ summary: 'Получить имена файлов по списку ID (через запятую)' })
+  @ApiOkResponse({ type: [FileNameDto] })
+  async findByIds(
+    @CurrentUser() user: User,
+    @Query('ids') idsParam: string,
+  ): Promise<FileNameDto[]> {
+    const ids = idsParam ? idsParam.split(',').filter(Boolean) : [];
+    if (ids.length === 0) {
+      throw new BadRequestException('Укажите ids через запятую');
+    }
+    if (ids.length > MAX_BULK_IDS) {
+      throw new BadRequestException(`Максимум ${MAX_BULK_IDS} ID за один запрос`);
+    }
+    const files = await this.filesService.findByIds(ids, user.id, user.role === UserRole.ADMIN);
+    return files.map((file) => {
+      return FileNameDto.fromEntity(file);
+    });
   }
 
   @Get()
